@@ -8,10 +8,20 @@ const PREFIX = process.env.prefix;
 const DB = process.env.db;
 
 
-client.commands = new Discord.Collection();
 
 mongoose.connect(DB, {useNewUrlParser: true});
 
+db = mongoose.connection;
+
+ db.on('open', async () => {
+   console.log('Connected to the database.');
+ });
+
+db.on('error',  err =>{
+  console.log(err);
+})
+
+client.commands = new Discord.Collection();
 
 client.on('error', console.error);
 client.on('warn', console.warn);
