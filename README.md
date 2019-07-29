@@ -18,7 +18,7 @@ Run `git clone https://github.com/DevHitori/Fiverr-Job-005` in the folder you wa
    **!points** - *Shows how the points system works.*  
    **!pointsAllTime** - *Can be used to see your points collected from every game ever played.*  
    **!gameinfo** - *Usage: !gameinfo [Game Code]*  
-   **!leaderboard** - *Shows the leaderboard of the current game*  
+   **!leaderboard** - *Shows the leaderboard of the selected game*  
    **!leaderboardAllTime** - *Shows the over leaderboard of everyone in the server*  
    **!whois** - *Useage: !whois [userID]*  
    **!commandlist** - *Shows these commands*  
