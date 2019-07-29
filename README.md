@@ -7,8 +7,8 @@
 + Run `Yarn start` in console
 
 #### List of commands:
-   **!newgame** - *Creates a new mafia game*\n
-   **!stopgame** - *Stops and deletes your mafia game*
+  - **!newgame** - *Creates a new mafia game*\n
+  -**!stopgame** - *Stops and deletes your mafia game*
    **!addpoints** - *Used by Admins to manually add points to a player's stats*\n
    **!removepoints** - *Used by Admins to manually remove points from a player's stats*
    **!points** - *Can be used to check the amount of points you have in the current game you're playing.*
