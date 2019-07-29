@@ -1,2 +1,6 @@
-# Discordjs-Boilerplate
-An empty bot template for Discord.js
+# Welcome to CoachRiver's Mafia Bot
+## How to Install
+### Install dependencies for first time use
++ Run `Yarn` in console
++ Add your bot's token to the .env folder located in the root directory
+### Starting the Mafia Bot
