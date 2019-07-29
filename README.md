@@ -15,7 +15,7 @@ Run `git clone https://github.com/DevHitori/Fiverr-Job-005` in the folder you wa
    **!stopgame** - *Stops and deletes your mafia game*  
    **!addpoints** - *Used by Admins to manually add points to a player's stats*  
    **!removepoints** - *Used by Admins to manually remove points from a player's stats*  
-   **!points** - *Can be used to check the amount of points you have in the current game you're playing.*  
+   **!points** - *Shows how the points system works.*  
    **!pointsAllTime** - *Can be used to see your points collected from every game ever played.*  
    **!gameinfo** - *Usage: !gameinfo [Game Code]*  
    **!leaderboard** - *Shows the leaderboard of the current game*  
