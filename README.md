@@ -21,4 +21,5 @@ Run `git clone https://github.com/DevHitori/Fiverr-Job-005` in the folder you wa
    **!leaderboard** - *Shows the leaderboard of the selected game*  
    **!leaderboardAllTime** - *Shows the over leaderboard of everyone in the server*  
    **!whois** - *Useage: !whois [userID]*  
+   **!ping** - *Shows both Discord's ping and Bot's ping*
    **!commandlist** - *Shows these commands*  
