@@ -37,6 +37,7 @@ for (let file of jsfiles){
 
 client.on('ready', () => {
   console.log(`Logged in as ${client.user.tag}!`);
+
 });
 
 client.on('message', message => {
@@ -51,7 +52,7 @@ client.on('message', message => {
   if (!client.commands.has(cmd)) return;
 
   let commandfile = client.commands.get(cmd);
-  commandfile.run(client, message, args, process.env.prefix);
+  commandfile.run(client, message, args, process.env.prefix, db);
 
 
 });
