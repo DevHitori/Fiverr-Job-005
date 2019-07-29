@@ -16,7 +16,7 @@ let res = await db.collection('Active Games').findOne({'creador.user.id':message
       res.embed.delete();
     }catch{}
 
-    let coll2 = await db.collection('old_games').insert(res)
+    let coll2 = await db.collection('Old Games').insert(res)
     let coll = await db.collection('Active Games').deleteOne({_id:res._id})
 
     let e = new Discord.RichEmbed()

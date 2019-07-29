@@ -29,7 +29,6 @@ module.exports.run = async (client, message, args, prefix) => {
     return;
   }
 
-  points = parseInt(points)
   if(isNaN(points) || points < 0){
     var embed = new Discord.RichEmbed()
      .setTitle(`A number was expected for points not ${points}`)
@@ -37,6 +36,7 @@ module.exports.run = async (client, message, args, prefix) => {
    message.channel.send(embed);
   return;
 }
+points = parseInt(points)
 
 let res = await db.collection('Player Stats').findOne({playerID: member.user.id})
 
