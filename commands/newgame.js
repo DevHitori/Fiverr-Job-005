@@ -2,14 +2,22 @@ const Discord = require("discord.js");
 const EventEmitter = require('events');
 class MyEmitter extends EventEmitter {}
 const Nextphase = new MyEmitter();
+const mongoose = require('mongoose');
+
 
 
 
 
 module.exports.run = async (client, message, args, prefix, db) => {
 
+  var emoji1 = await client.emojis.get('RockectLeague')
+  var emoji2 = await client.emojis.get('426406049491320832')
+  console.log(emoji2);
+  if (!emoji1) emoji1 ={name:'🇷',id:'🇷'}
+  if (!emoji2) emoji2={name:'🇱',id:'🇱'}
 
-  let res = await db.collection('active_games').findOne({'creador.user.id':message.author.id})
+
+  let res = await db.collection('Active Games').findOne({'creador.user.id':message.author.id})
   if (res) {
     let embed = new Discord.RichEmbed()
     .addField(`You already have a game running!`)
@@ -29,42 +37,41 @@ module.exports.run = async (client, message, args, prefix, db) => {
   .setColor('#36393F')
   let emdMsg = await message.channel.send(embed);
 
-  await emdMsg.react('🇷')
-  await emdMsg.react('🇱')
+    await emdMsg.react(emoji1.id)
+    await emdMsg.react(emoji2.id)
 
   let filter = (reaction, user) => {
-    return ['🇷', '🇱'].includes(reaction.emoji.name) && user.id === message.author.id; }
+    return [emoji1.name, emoji2.name].includes(reaction.emoji.name) && user.id === message.author.id; }
 
-  let reaction = await emdMsg.awaitReactions(filter, { max: 1, time: 1000, errors: ['time'] }).catch( error=>{
+  let reaction = await emdMsg.awaitReactions(filter, { max: 1, time: 60000, errors: ['time'] }).catch( error=>{
     globalErr = true;
     let embed2 = new Discord.RichEmbed()
     .setTitle(`Timeout`)
     .setColor('#36393F')
     emdMsg.edit(embed2);
   })
-  let mongoID = mongoose.Types.ObjectId()
-  let uid = mongoID.slice(-6)
-
+  let mongoID = await mongoose.Types.ObjectId()
+  let uid = JSON.stringify(mongoID).slice(-7).slice(0, -1)
   let gameType;
 
-  if (reaction.first().name == '🇷' ) {
+  if (reaction.first()._emoji.name == emoji1.name ) {
     gameType = 'Rocket League'
   }
-  if (reaction.first().name == '🇱' ) {
+  if (reaction.first()._emoji.name == emoji2.name ) {
     gameType = 'League of Legends'
   }
-  emdMsg.clearReactions()
+  await emdMsg.clearReactions()
   let embed3 = new Discord.RichEmbed()
   .addField(`Creating a ${gameType} Mafia Game | #${uid}`,`**Please Select The Team Size**`)
   .setColor('#36393F')
   emdMsg.edit(embed3);
 
-  await emdMsg.react('three')
-  await emdMsg.react('four')
-  await emdMsg.react('five')
+  await emdMsg.react('3⃣')
+  await emdMsg.react('4⃣')
+  await emdMsg.react('5⃣')
 
   let filter2 = (reaction, user) => {
-    return ['three', 'four','five'].includes(reaction.emoji.name) && user.id === message.author.id; }
+    return ['3⃣', '4⃣','5⃣'].includes(reaction.emoji.name) && user.id === message.author.id; }
 
   reaction = await emdMsg.awaitReactions(filter2, { max: 1, time: 60000, errors: ['time'] }).catch( error=>{
     globalErr = true;
@@ -75,45 +82,34 @@ module.exports.run = async (client, message, args, prefix, db) => {
   })
   if(globalErr) return;
 
-  let teamSize = (reaction.first().name == 'five') ? 5 : (reaction.first().name == 'four') ? 4 : 3
+  let teamSize = (reaction.first()._emoji.name == '5⃣') ? 5 : (reaction.first()._emoji.name == '4⃣') ? 4 : 3
 
   let objArr = [{
     player: message.author.id,
     playerScore: 0
   }];
 
-  let dbRes = db.collection('active_games').insertOne({
+  let dbRes = await db.collection('Active Games').insertOne({
     _id: mongoID,
     code: uid,
-    embed: emdMsg,
+    embed: emdMsg.id,
     type: gameType,
     teamSize: teamSize,
-    creador: message.author,
+    creador: message.author.id,
     estado: 'starting',
     participantes: objArr,
     teamRed : [],
     teamBlue: [],
     mafia: []
   })
-  emdMsg.clearReactions();
-
-  let dbRes2 = await db.collection('Player Stats').findOneandUpdate({playerID: message.author.id},{$inc:{"games_created":1}})
-  //   _id: mongoose.Types.ObjectId(),
-  //   playerName: uid,
-  //   playerID: gameType,
-  //   g: teamSize,
-  //   creador: message.author,
-  //   estado: 'starting',
-  //   participantes: [message.author.id],
-  //   teamRed : [],
-  //   teamBlue: [],
-  //   mafia: []
-  // })
+  await emdMsg.clearReactions();
 
 
 
-  console.log('Checkinsicistion - ',dbRes);
-  console.log('UpdateNone - ',dbRes2);
+
+
+
+
 
   let embed4 = new Discord.RichEmbed()
   .addField(`${gameType} Mafia Game Created | #${uid}`,`Hit ⬆ to join the game!`)
@@ -126,11 +122,11 @@ module.exports.run = async (client, message, args, prefix, db) => {
   let filter3 = (reaction, user) => {
     return ['⬆','⬇'].includes(reaction.emoji.name) && user.id != client.user.id
   };
-  let gameLobby = await new emdMsg.Discord.ReactionCollector(filter3,{time: 300000})
+  let gameLobby = emdMsg.createReactionCollector(filter3,{time: 300000})
 
   var cancelEnd = false;
 
-  gameLobby.on('end', coll=>{
+  gameLobby.on('end', async coll=>{
     if (cancelEnd) return;
     if (estado!='generating') {
       globalErr = true;
@@ -153,12 +149,24 @@ module.exports.run = async (client, message, args, prefix, db) => {
       }else{
         mafia.push(players[Math.floor(Math.random() * myArray.length)])
       }
-      db.collection('active_games').findOneandUpdate({_id:mongoID},{$set:{teamRed:redTeam,teamBlue:blueTeam,mafia:mafia,estado:'in progress'}});
-      Nextphase.emit('start',mongoID,emdMsg,dbRes);
+      db.collection('Active Games').findOneandUpdate({_id:mongoID},{$set:{teamRed:redTeam,teamBlue:blueTeam,mafia:mafia,estado:'in progress'}});
+      let checkForPlayer = await db.collection('Player Stats').findOne({playerID: message.author.id});
+      if (checkForPlayer){
+        let dbRes2 = await db.collection('Player Stats').findOneAndUpdate({playerID: message.author.id},{$inc:{"gamesCreated":1}})
+      }else{
+        let dbRes2 = await db.collection('Player Stats').insertOne({
+          playerID: message.author.id,
+          playerScore: 0,
+          gamesCreated: 1,
+          gamesPlayed: 0,
+          gamesWon: 0
+        })
+      }
+      Nextphase.emit('start',mongoID,emdMsg);
     }
   })
 
-  let players = []
+  let players = [message.author.id]
 
   gameLobby.on('collect', async r =>{
     let reactor = await r.users.last();
@@ -167,49 +175,72 @@ module.exports.run = async (client, message, args, prefix, db) => {
 
 
     if (r._emoji.name == '⬇') {
-          if(players.includes(reactor)){
+          if(players.includes(reactor.id)){
             players = players.filter((ele)=>{
-              return ele != reactor;
+              return ele != reactor.id;
             });
             let embed6 = new Discord.RichEmbed()
-            .setTitle(`You left Mafia Game #${uid}'s Lobby`)
+            .setTitle(`${client.users.get(reactor.id).username} left Mafia Game #${uid}'s Lobby`)
             .setColor('#36393F');
-            emdMsg.channel.send(embed6).delete(2000)
+            let mstoDel = await emdMsg.channel.send(embed6)
+            mstoDel.delete(2000)
+
+            let embed7 = new Discord.RichEmbed()
+            .addField(`${gameType} Mafia Game Created | #${uid}`,`Hit ⬆ to join the game!`)
+            .setColor('#36393F');
+            let joinedStr = ''
+            for(let playerID of players){
+              joinedStr += `\n ${client.users.get(reactor.id).username } joined lobby!`
+            }
+            if (players.length > 0) {
+              embed6.addField(`__Players Joined:__`,`${joinedStr}`);
+            }
+            emdMsg.edit(embed7)
+
           }else{
             let embed6 = new Discord.RichEmbed()
             .setTitle(`You haven't joined Mafia Game #${uid}`)
             .setColor('#36393F');
-            emdMsg.channel.send(embed6).delete(2000)
+            let mstoDel = await emdMsg.channel.send(embed6)
+            mstoDel.delete(2000)
           }
       }
 
 
       if (r._emoji.name == '⬆') {
-        players.push(reactor)
+      if(!players.includes(reactor.id)){
+        players.push(reactor.id)
         let embed6 = new Discord.RichEmbed()
         .addField(`${gameType} Mafia Game Created | #${uid}`,`Hit ⬆ to join the game!`)
         .setColor('#36393F');
         let joinedStr = ''
-        for(let player of players){
-          joinedStr += `\n ${player.username} joined lobby!`
+        for(let playerID of players){
+          joinedStr += `\n ${client.users.get(reactor.id).username } joined lobby!`
         }
         embed6.addField(`__Players Joined:__`,`${joinedStr}`);
         emdMsg.edit(embed6)
 
-        if(players.length == teamSize*2){
+        if(players.length >= teamSize*2){
           estado = 'generating';
           cancelEnd = true;
           gameLobby.emit('end');
         }
 
+      }else{
+        let embed6 = new Discord.RichEmbed()
+        .setTitle(`You are already in Mafia Game #${uid}`)
+        .setColor('#36393F');
+        let mstoDel = await emdMsg.channel.send(embed6)
+        mstoDel.delete(2000)
       }
+    }
 
   })
 
 //nextphase
 
 Nextphase.on('start', async (mongoID,embedMsg,database) => {
-  let gameData = await db.collection('active_games').findOne({_id:mongoID});
+  let gameData = await db.collection('Active Games').findOne({_id:mongoID});
   var globalErr2 = false;
   let e1 = new Discord.RichEmbed()
   .setTitle(`Pssst! You are the **MAFIA**, throw some games bruh!`)
@@ -230,7 +261,7 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
   if(globalErr2) return;
 
 
-  let res = await db.collection('active_games').findOne({'creador.user.id':message.author.id});
+  let res = await db.collection('Active Games').findOne({'creador':message.author.id});
   if(!res){
     console.log('Error Game not found!');
     return;
@@ -245,8 +276,8 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
   }
 
   let embed = new Discord.RichEmbed()
-  .addField(`Your ${database.type} Mafia Game | #${database.code} Has Started!`,`*When the game is over the game creator will click ☑ to begin the next phase*`)
-  .addField(`__Game Creator:__`,`${database.creador}`)
+  .addField(`Your ${res.type} Mafia Game | #${res.code} Has Started!`,`*When the game is over the game creator will click ☑ to begin the next phase*`)
+  .addField(`__Game Creator:__`,`${client.users.get(res.creador).username || res.creador}`)
   .addField(`__Red Team:__`,`${redStr}`)
   .addField(`__Blue Team:__`,`${blueStr}`,true)
   .setColor('#36393F')
@@ -294,6 +325,10 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
 
   if(gameData.type == 'League of Legends'){
     if (reaction2.first().name == '🔴'){
+
+
+    }
+    if (reaction2.first().name == '🔵'){
 
 
     }
