@@ -19,7 +19,7 @@ Run `git clone https://github.com/DevHitori/Fiverr-Job-005` in the folder you wa
    **!pointsAllTime** - *Can be used to see your points collected from every game ever played.*  
    **!gameinfo** - *Usage: !gameinfo [Game Code]*  
    **!leaderboard** - *Shows the leaderboard of the selected game*  
-   **!leaderboardAllTime** - *Shows the over leaderboard of everyone in the server*  
+   **!leaderboardAllTime** - *Shows the overall leaderboard of everyone in the server*  
    **!whois** - *Useage: !whois [userID]*  
-   **!ping** - *Shows both Discord's ping and Bot's ping*
+   **!ping** - *Shows both Discord's ping and Bot's ping*  
    **!commandlist** - *Shows these commands*  
