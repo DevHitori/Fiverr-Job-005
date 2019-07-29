@@ -1,4 +1,8 @@
 # Welcome to CoachRiver's Mafia Bot
+
+## Getting started
+Run `git clone https://github.com/DevHitori/Fiverr-Job-005` in the folder you want to copy the files to
+
 ## How to Install
 ### Install dependencies for first time use
 + Run `Yarn` in console
@@ -16,5 +20,5 @@
    **!gameinfo** - *Usage: !gameinfo [Game Code]*  
    **!leaderboard** - *Shows the leaderboard of the current game*  
    **!leaderboardAllTime** - *Shows the over leaderboard of everyone in the server*  
-   **!whois** - *Useage !whois [userID]*  
+   **!whois** - *Useage: !whois [userID]*  
    **!commandlist** - *Shows these commands*  
