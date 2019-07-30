@@ -522,13 +522,13 @@ async function votesReady(gameData,embMsg,won){
                   let toAdd = voteSize - toSub
                   mafPoints+= toAdd
                 }
-                db.collection.('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':maf},{$set:{'participantes.$.playerScore':mafPoints}})
+                db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':maf},{$set:{'participantes.$.playerScore':mafPoints}})
               }
 
               var allRedButMaf = doc.teamRed
               var allBlueButMaf = doc.teamBlue
 
-              for(let duid of gameData.mafia){
+              for(let duid of doc.mafia){
                 allRedButMaf = allRedButMaf.filter( (m) => m!=duid )
                 allBlueButMaf = allBlueButMaf.filter( (m) => m!=duid )
               }
@@ -539,7 +539,7 @@ async function votesReady(gameData,embMsg,won){
                   let playerChoiceIndex = doc.gameVotes.findIndex( p => p.playerID == redPlayer)
                   let playerC = doc.gameVotes[playerChoiceIndex].choice
                   if (doc.mafia.includes(doc.teamRed[playerC].playerID)) redPoints+=2
-                db.collection.('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':redPlayer},{$set:{'participantes.$.playerScore':redPoints}})
+                db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':redPlayer},{$set:{'participantes.$.playerScore':redPoints}})
               }
               for(let bluePlayer of allBlueButMaf){
                 let bluePoints=0;
@@ -547,9 +547,8 @@ async function votesReady(gameData,embMsg,won){
                   let playerChoiceIndex = doc.gameVotes.findIndex( p => p.playerID == bluePlayer)
                   let playerC = doc.gameVotes[playerChoiceIndex].choice
                   if (doc.mafia.includes(doc.teamBlue[playerC].playerID)) bluePoints+=2
-                db.collection.('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':bluePlayer},{$set:{'participantes.$.playerScore':bluePoints}})
+                db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':bluePlayer},{$set:{'participantes.$.playerScore':bluePoints}})
               }
-
 
 
 
@@ -560,14 +559,87 @@ async function votesReady(gameData,embMsg,won){
 
             }else{
 
+              let onlyMaf = doc.maf[0];
+
+              var allRedButMaf = doc.teamRed
+              var allBlueButMaf = doc.teamBlue
+
+                allRedButMaf = allRedButMaf.filter( (m) => m!=onlyMaf )
+                allBlueButMaf = allBlueButMaf.filter( (m) => m!=onlyMaf )
+
+              if(won=='Red'){
+                for(let redPlayer of allRedButMaf){
+                  if(doc.teamRed.includes(onlyMaf)){
+                    db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':redPlayer},{$set:{'participantes.$.playerScore':2}})
+                  }else{
+                    db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':redPlayer},{$set:{'participantes.$.playerScore':1}})
+                  }
+                }
+              }else{
+
+              }
+
+
+
+              if(won=='Blue'){
+                for(let bluePlayer of allBlueButMaf){
+                  if(doc.teamBlue.includes(onlyMaf)){
+                    db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':bluePlayer},{$set:{'participantes.$.playerScore':2}})
+                  }else{
+                    db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':bluePlayer},{$set:{'participantes.$.playerScore':1}})
+                  }
+                }
+              }
+
+
+
+
+
+
+
+
+
+
             }
+
+            doc.participantes.forEach( p =>{
+              db.collection('Player Stats').findOneAndUpdate({playerID:p.playerID},{$set:{playerScore:p.playerScore}},{upsert:true});
+            })
+            let trans = await db.collection('Active Games').findOne({_id:doc._id})
+            trans.winners = won;
+            db.collection('Old Games').insertOne(trans)
+            db.collection('Active Games').deleteOne(_id:doc._id)
 
 
             let e = new Discord.RichEmbed()
-            .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Time For Results`)
+            .setTitle(`Your ${res.type} Mafia Game #${res.code} Is **FINISHED** | Results ->`)
             .setThumbnail(client.user.avatarURL)
-            .serFooter(`Game over | Use !gameinfo #${res.code} to check match's statistics`)
-            .setColor('#36393F')
+            .setFooter(`Game over | Use !gameinfo #${res.code} to check match's statistics`)
+            .setColor('#36393F');
+
+            let rStr='';
+            let bStr='';
+            let mStr='';
+            for(let playerID of trans.teamRed){
+              rStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+            }
+            for(let playerID of trans.teamBlue){
+              bStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+            }
+            for(let mafID of trans.mafia){
+              mStr+=`\n${client.users.get(mafID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+            }
+            if (won=='Red') {
+              e.addField(`__Red Team__ [Winners]`,`${rStr}`)
+              e.addField(`__Blue Team__`,`${bStr}`,true)
+              e.addField(`__Mafia__`,`${mStr}`,true)
+            }else{
+              e.addField(`__Blue Team__ [Winners]`,`${bStr}`)
+              e.addField(`__Red Team__`,`${rStr}`,true)
+              e.addField(`__Mafia__`,`${mStr}`,true)
+            }
+
+
             embMsg.edit(e)
 
           }else{
