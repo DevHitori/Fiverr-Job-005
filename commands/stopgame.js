@@ -3,8 +3,8 @@ const fs = require("fs");
 date = new Date();
 
 module.exports.run = async (client, message, args, prefix) => {
-
-let res = await db.collection('Active Games').findOne({'creador.user.id':message.author.id})
+if(message.channel.type=='dm')return;
+let res = await db.collection('Active Games').findOne({'creador':message.author.id})
   if (!res){
     let e = new Discord.RichEmbed()
     .setTitle(`You have no active mafia games running!`)
@@ -16,7 +16,7 @@ let res = await db.collection('Active Games').findOne({'creador.user.id':message
       res.embed.delete();
     }catch{}
 
-    let coll2 = await db.collection('Old Games').insert(res)
+    let coll2 = await db.collection('Old Games').insertOne(res)
     let coll = await db.collection('Active Games').deleteOne({_id:res._id})
 
     let e = new Discord.RichEmbed()
