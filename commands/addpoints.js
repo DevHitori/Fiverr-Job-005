@@ -6,7 +6,7 @@ date = new Date();
 module.exports.run = async (client, message, args, prefix) => {
   if (message.channel.type=='dm') {
     var embed = new Discord.RichEmbed()
-     .setTitle(`This command must be used in a server`)
+     .setTitle(`This command must be used in the server`)
      .setColor("#36393F");
    message.channel.send(embed);
     return;

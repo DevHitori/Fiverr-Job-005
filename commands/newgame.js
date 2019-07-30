@@ -400,6 +400,8 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
     allBlueButMaf = allBlueButMaf.filter( (m) => m!=duid )
   }
 
+  db.collection('Active Games').findOneAndUpdate({_id:mongoID},{$set: {estado:'ending'}});
+
   if(gameData.type == 'League of Legends'){
     if (reaction2.first().name == '🔴'){
       color='Red'
@@ -493,10 +495,25 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
 
 
 
-async function votesReady(gameData){
+async function votesReady(gameData,embMsg){
     const changeStream = collection.watch();
     changeStream.on('change', async (next) => {
-      console.log('all votes collected')
+      if(next.fullDocument['estado']=='ending' && next.fullDocument['_id']==gameData._id){
+          if ((next.fullDocument['teamSize']-2)==next.fullDocument['voteCounter']) {
+
+            
+
+          }else{
+            let numPics = ['https://cdn.discordapp.com/attachments/605555031508385918/605555049363669007/0-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556442866384907/1-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556445055942679/2-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556447862063104/3-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556449958952970/4-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556452052172800/5-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556456288288768/6-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556458490429470/7-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556461266796569/8-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556463292645378/9-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556465322950675/10-Number-PNG.png']
+
+            let e = new Discord.RichEmbed()
+            .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Check your DMs Each member has to vote now!`)
+            .setThumbnail(client.user.avatarURL)
+            .serFooter(`/${2*teamSize-2} have joined the game!`, `${numPics[`${next.fullDocument['voteCounter']}`]}`)
+            .setColor('#36393F')
+            embMsg.edit(e)
+          }
+      }
       // let oldGames = await db.collection('Old Games');
       // next.fullDocument['timeStamps']['confirmed'] = new Date().toISOString();
       // oldGames.insertOne(next.fullDocument);

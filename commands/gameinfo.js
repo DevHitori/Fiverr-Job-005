@@ -32,6 +32,7 @@ module.exports.run = async (client, message, args, prefix) => {
     .addField('Code:', res.code,)
     .addField('Creator:', res.creador,true)
     .addField('State:', res.estado,true)
+    .setThumbnail(client.user.avatarURL)+
 
     .setColor("#36393F");
 

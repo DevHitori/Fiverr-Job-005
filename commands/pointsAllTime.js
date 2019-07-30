@@ -20,6 +20,7 @@ module.exports.run = async (client, message, args, prefix) => {
       .addField(`Games Played:`,`${res.gamesPlayed}`,true)
       .addField(`Games Created:`,`${res.gamesCreated}`,true)
       .addField(`Games Won As Mafia:`,`${res.gamesWonAsMafia}`,true)
+      .setThumbnail(client.user.avatarURL)
       .setColor('#36393F');
       message.channel.send(e)
 }

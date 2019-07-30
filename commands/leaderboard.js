@@ -30,6 +30,7 @@ module.exports.run = async (client, message, args, prefix) => {
   }else{
     let e = new Discord.RichEmbed()
     .setTitle(`CoachRiver's Mafia Bot | Game #${res.code} LeaderBoard`)
+    .setThumbnail(client.user.avatarURL)
     .setColor("#36393F");
 
     let str='';
