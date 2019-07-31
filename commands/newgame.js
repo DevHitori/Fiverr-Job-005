@@ -129,7 +129,8 @@ module.exports.run = async (client, message, args, prefix, db) => {
     voteCounter: 0,
     teamRed : [],
     teamBlue: [],
-    mafia: []
+    mafia: [],
+    winner: null
   })
   await emdMsg.clearReactions();
 
@@ -287,6 +288,9 @@ module.exports.run = async (client, message, args, prefix, db) => {
 Nextphase.on('start', async (mongoID,embedMsg,database) => {
   await embedMsg.clearReactions();
   let gameData = await db.collection('Active Games').findOne({_id:mongoID});
+  if (!gameData) {
+    gameData = await db.collection('Old Games').findOne({_id:mongoID});
+  }
   var globalErr2 = false;
   let e1 = new Discord.RichEmbed()
   .setTitle(`Pssst! You are the **MAFIA**, throw some games bruh!`)
@@ -399,17 +403,16 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
     allBlueButMaf = allBlueButMaf.filter( (m) => m!=duid )
   }
 
-  db.collection('Active Games').findOneAndUpdate({_id:mongoID},{$set: {estado:'ending'}});
-
-  if(gameData.type == 'League of Legends'){
-    if (reaction2.first().name == '🔴'){
+    if (reaction2.first()._emoji.name == '🔴'){
       color='Red'
     }
-    if (reaction2.first().name == '🔵'){
+    if (reaction2.first()._emoji.name == '🔵'){
       color='Blue'
     }
-
+    db.collection('Active Games').findOneAndUpdate({_id:mongoID},{$set: {estado:'ending',winner:color}});
     await emdMsg.clearReactions();
+
+    if(gameData.type == 'League of Legends'){
     let fembed3 = new Discord.RichEmbed()
     .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Check your DMs Each member has to vote now!`)
     .setThumbnail(client.user.avatarURL)
@@ -417,6 +420,7 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
     emdMsg.edit(fembed3);
 
     votesReady(gameData,emdMsg,color);
+
 
     for(let duid of allRedButMaf){
     let forRedTeam = new Discord.RichEmbed()
@@ -433,15 +437,20 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
     let filterChoice = (reaction, user) => {
       return ['1⃣','2⃣','3⃣','4⃣','5⃣','6⃣','7⃣','8⃣','9⃣','🔟'].includes(reaction.emoji.name) && user.id != client.user.id
     };
-    let playerChoice = msgToPlayer.createReactionCollector(filterChoice,{max:1,time: 30000}).catch(async e=>{
-      let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$inc:{voteCounter:1}})
-    })
 
+    try{
+    let playerChoice = msgToPlayer.createReactionCollector(filterChoice,{max:1,time: 300000})
     playerChoice.on('collect', async r=>{
         let choiceMade = (r._emoji.name=='1⃣') ? 1 : (r._emoji.name=='2⃣') ? 2 : (r._emoji.name=='3⃣') ? 3 : (r._emoji.name=='4⃣') ? 4 : (r._emoji.name=='5⃣') ? 5 : (r._emoji.name=='6⃣') ? 6 : (r._emoji.name=='7⃣') ? 7 : (r._emoji.name=='8⃣') ? 8 : (r._emoji.name=='9⃣') ? 9 : (r._emoji.name=='🔟') ? 10 : 11
+        choiceMade--;
         let awaited1 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$push: {gameVotes:{$each: [ { playerID: duid, choice: choiceMade }]}}})
         let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$inc:{voteCounter:1}})
     })
+  }catch{
+    let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$inc:{voteCounter:1}})
+  }
+
+
   }
 
     for(let duid of allBlueButMaf){
@@ -458,15 +467,19 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
     let filterChoice = (reaction, user) => {
       return ['1⃣','2⃣','3⃣','4⃣','5⃣','6⃣','7⃣','8⃣','9⃣','🔟'].includes(reaction.emoji.name) && user.id != client.user.id
     };
-    let playerChoice = msgToPlayer.createReactionCollector(filterChoice,{max:1,time: 30000}).catch(async e=>{
-      let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$inc:{voteCounter:1}})
-    })
-
+    try{
+    let playerChoice = msgToPlayer.createReactionCollector(filterChoice,{max:1,time: 300000})
     playerChoice.on('collect', async r=>{
         let choiceMade = (r._emoji.name=='1⃣') ? 1 : (r._emoji.name=='2⃣') ? 2 : (r._emoji.name=='3⃣') ? 3 : (r._emoji.name=='4⃣') ? 4 : (r._emoji.name=='5⃣') ? 5 : (r._emoji.name=='6⃣') ? 6 : (r._emoji.name=='7⃣') ? 7 : (r._emoji.name=='8⃣') ? 8 : (r._emoji.name=='9⃣') ? 9 : (r._emoji.name=='🔟') ? 10 : 11
+        choiceMade--;
         let awaited1 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$push: {gameVotes:{$each: [ { playerID: duid, choice: choiceMade }]}}})
         let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$inc:{voteCounter:1}})
-    })
+      })
+      }catch{
+    let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$inc:{voteCounter:1}})
+  }
+
+
   }
     // let embed4 = new Discord.RichEmbed()
     // .addField(`${gameType} Mafia Game Created | #${uid}`,`Hit ⬆ to join the game!`)
@@ -479,6 +492,283 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
 
 
   }else{
+    //ROCKET LEAGUE
+    if(color=='Red' && res.teamRed.includes(res.mafia[0])){
+      let name = client.users.get(res.mafia[0]).username || res.mafia[0]
+      let fembed3 = new Discord.RichEmbed()
+      .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Red Team Won - ${name} was the mafiaso everyone else gets 2 points each!\nThe losing team gets nothing\n\nGood Game!`)
+      .setThumbnail(client.user.avatarURL)
+      .setColor('#36393F')
+      emdMsg.edit(fembed3);
+      var allRedButMaf = res.teamRed.filter( (m) => m!=res.mafia[0] )
+      for(let red of allRedButMaf){
+        db.collection('Active Games').update({_id:res._id,'participantes.playerID':red},{$set:{'participantes.$.playerScore':2}})
+        db.collection('Player Stats').findOneAndUpdate({playerID:red},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:2}},{upsert:true});
+      }
+    }
+
+    if(color=='Red' && !res.teamRed.includes(res.mafia[0])){
+      var allRedButMaf = res.teamRed.filter( (m) => m!=res.mafia[0] )
+      for(let red of allRedButMaf){
+        db.collection('Active Games').update({_id:res._id,'participantes.playerID':red},{$set:{'participantes.$.playerScore':1}})
+        db.collection('Player Stats').findOneAndUpdate({playerID:red},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:1}},{upsert:true});
+      }
+    }
+
+    if(color=='Blue' && !res.teamBlue.includes(res.mafia[0])){
+      var allBlueButMaf = res.teamBlue.filter( (m) => m!=res.mafia[0] )
+      for(let blue of allRedButMaf){
+        db.collection('Active Games').update({_id:res._id,'participantes.playerID':blue},{$set:{'participantes.$.playerScore':1}})
+        db.collection('Player Stats').findOneAndUpdate({playerID:blue},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:1}},{upsert:true});
+      }
+    }
+
+    if(color=='Blue' && res.teamBlue.includes(res.mafia[0])){
+      let name = client.users.get(res.mafia[0]).username || res.mafia[0]
+      let fembed3 = new Discord.RichEmbed()
+      .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Blue Team Won - ${name} was the mafiaso everyone else gets 2 points each!\nThe losing team gets nothing\n\nGood Game!`)
+      .setThumbnail(client.user.avatarURL)
+      .setColor('#36393F')
+      emdMsg.edit(fembed3);
+      var allRedButMaf = res.teamBlue.filter( (m) => m!=res.mafia[0] )
+      for(let blue of allBlueButMaf){
+        db.collection('Active Games').update({_id:res._id,'participantes.playerID':blue},{$set:{'participantes.$.playerScore':2}})
+        db.collection('Player Stats').findOneAndUpdate({playerID:blue},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:2}},{upsert:true});
+      }
+    }
+
+    var newVoteCounter = 0;
+
+    if(color=='Blue' && res.teamRed.includes(res.mafia[0])){
+      let fembed3 = new Discord.RichEmbed()
+      .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Red Team Won - But the mafia was not there 🤔\n\n Time to vote!!\nI'll send instructions to each of you `)
+      .setThumbnail(client.user.avatarURL)
+      .setColor('#36393F')
+      emdMsg.edit(fembed3);
+
+      var allRedButMaf = res.teamRed.filter( (m) => m!=res.mafia[0] )
+      console.log('Mafia -',res.mafia[0] );
+      console.log('array  -',allRedButMaf );
+
+      for(let duid of allRedButMaf){
+      let forRedTeam = new Discord.RichEmbed()
+      .addField(`Time to Vote!`,`Who do you think the mafia on your team was?`)
+      .addField(`Select an option:`,`${ res.teamRed.map( (id,i) => `\n ${numbers[`${++i}`]} ${ client.users.get(`${id}`).username }`)}` )
+      .setFooter(`You have 30 seconds to choose`)
+      .setThumbnail(client.user.avatarURL)
+      .setColor('#36393F')
+      let msgToPlayer = await client.users.get(duid).send(forRedTeam);
+      for(var p=1;p<=res.teamRed.length;p++){
+        await msgToPlayer.react(`${numbers[`${p}`]}`)
+      }
+
+      let filterChoice = (reaction, user) => {
+        return ['1⃣','2⃣','3⃣','4⃣','5⃣','6⃣','7⃣','8⃣','9⃣','🔟'].includes(reaction.emoji.name) && user.id != client.user.id
+      };
+
+      try{
+      let playerChoice = msgToPlayer.createReactionCollector(filterChoice,{max:1,time: 30000})
+      playerChoice.on('collect', async r=>{
+          let choiceMade = (r._emoji.name=='1⃣') ? 1 : (r._emoji.name=='2⃣') ? 2 : (r._emoji.name=='3⃣') ? 3 : (r._emoji.name=='4⃣') ? 4 : (r._emoji.name=='5⃣') ? 5 : (r._emoji.name=='6⃣') ? 6 : (r._emoji.name=='7⃣') ? 7 : (r._emoji.name=='8⃣') ? 8 : (r._emoji.name=='9⃣') ? 9 : (r._emoji.name=='🔟') ? 10 : 11
+          choiceMade--;
+          let awaited1 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$push: {gameVotes:{$each: [ { playerID: duid, choice: choiceMade }]}}})
+          let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$inc:{voteCounter:1}})
+
+
+            if (res.mafia.includes(res.teamRed[choiceMade])){
+              db.collection('Active Games').update({_id:res._id,'participantes.playerID':duid},{$set:{'participantes.$.playerScore':1}})
+              db.collection('Player Stats').findOneAndUpdate({playerID:duid},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:1}},{upsert:true});
+
+            }
+
+            newVoteCounter++
+            if (newVoteCounter==(res.teamSize-1)){
+              let trans = await db.collection('Active Games').findOne({code: res.code})
+              if (!trans) {
+                trans = await db.collection('Old Games').findOne({code: res.code})
+              }
+              let e = new Discord.RichEmbed()
+              .setTitle(`Your ${trans.type} Mafia Game #${trans.code} Is **FINISHED** | Results ->`)
+              .setThumbnail(client.user.avatarURL)
+              .setFooter(`Game over | Use !gameinfo #${trans.code} to check match's statistics`)
+              .setColor('#36393F');
+
+              let rStr='';
+              let bStr='';
+              let mStr='';
+              for(let playerID of trans.teamRed){
+                rStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+              }
+              for(let playerID of trans.teamBlue){
+                bStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+              }
+              for(let mafID of trans.mafia){
+                mStr+=`\n${client.users.get(mafID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == mafID)].playerScore} Points`
+              }
+              if (trans.winner=='Red') {
+                e.addField(`__Red Team__ [Winners]`,`${rStr}`)
+                e.addField(`__Blue Team__`,`${bStr}`,true)
+                e.addField(`__Mafia__`,`${mStr}`,true)
+              }else{
+                e.addField(`__Blue Team__ [Winners]`,`${bStr}`)
+                e.addField(`__Red Team__`,`${rStr}`,true)
+                e.addField(`__Mafia__`,`${mStr}`,true)
+              }
+
+
+              emdMsg.edit(e)
+
+            }else{
+              let numPics = ['https://cdn.discordapp.com/attachments/605555031508385918/605555049363669007/0-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556442866384907/1-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556445055942679/2-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556447862063104/3-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556449958952970/4-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556452052172800/5-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556456288288768/6-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556458490429470/7-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556461266796569/8-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556463292645378/9-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556465322950675/10-Number-PNG.png']
+
+              let e = new Discord.RichEmbed()
+              .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Check your DMs Each member has to vote now!`)
+              .setThumbnail(client.user.avatarURL)
+              .setFooter(`/${res.teamSize-1} have joined the game!`, `${numPics[`${newVoteCounter}`]}`)
+              .setColor('#36393F')
+              emdMsg.edit(e)
+            }
+
+
+
+
+
+      })
+    }catch{
+      let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$inc:{voteCounter:1}})
+    }
+
+
+    }
+
+    let mafNum = res.teamRed.findIndex( p => p.playerID == res.mafia[0])
+    let amt = res.gameVotes.filter( vote => vote.choice == mafNum).length;
+    if ( amt < (res.teamSize/2)){
+      db.collection('Active Games').update({_id:res._id,'participantes.playerID':res.mafia[0]},{$set:{'participantes.$.playerScore':3}});
+      db.collection('Player Stats').findOneAndUpdate({playerID:res.mafia[0]},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:3}},{upsert:true});
+
+  }
+
+
+    }
+
+    if(color=='Red' && res.teamBlue.includes(res.mafia[0])){
+      let fembed3 = new Discord.RichEmbed()
+      .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Blue Team Won - But the mafia was not there 🤔\n\n Time to vote!!\nI'll send instructions to each of you`)
+      .setThumbnail(client.user.avatarURL)
+      .setColor('#36393F')
+      emdMsg.edit(fembed3);
+
+      var allBlueButMaf = res.teamBlue.filter( (m) => m!=res.mafia[0] )
+      console.log('Mafia -',res.mafia[0] );
+      console.log('array  -',allBlueButMaf );
+      for(let duid of allBlueButMaf){
+      let forRedTeam = new Discord.RichEmbed()
+      .addField(`Time to Vote!`,`Who do you think the mafia on your team was?`)
+      .addField(`Select an option:`,`${ res.teamBlue.map( (id,i) => `\n ${numbers[`${++i}`]} ${ client.users.get(`${id}`).username }`)}` )
+      .setFooter(`You have 30 seconds to choose`)
+      .setThumbnail(client.user.avatarURL)
+      .setColor('#36393F')
+      let msgToPlayer = await client.users.get(duid).send(forRedTeam);
+      for(var p=1;p<=res.teamRed.length;p++){
+        await msgToPlayer.react(`${numbers[`${p}`]}`)
+      }
+
+      let filterChoice = (reaction, user) => {
+        return ['1⃣','2⃣','3⃣','4⃣','5⃣','6⃣','7⃣','8⃣','9⃣','🔟'].includes(reaction.emoji.name) && user.id != client.user.id
+      };
+
+      try{
+      let playerChoice = msgToPlayer.createReactionCollector(filterChoice,{max:1,time: 30000})
+      playerChoice.on('collect', async r=>{
+          let choiceMade = (r._emoji.name=='1⃣') ? 1 : (r._emoji.name=='2⃣') ? 2 : (r._emoji.name=='3⃣') ? 3 : (r._emoji.name=='4⃣') ? 4 : (r._emoji.name=='5⃣') ? 5 : (r._emoji.name=='6⃣') ? 6 : (r._emoji.name=='7⃣') ? 7 : (r._emoji.name=='8⃣') ? 8 : (r._emoji.name=='9⃣') ? 9 : (r._emoji.name=='🔟') ? 10 : 11
+          choiceMade--;
+          let awaited1 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$push: {gameVotes:{$each: [ { playerID: duid, choice: choiceMade }]}}})
+          let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$inc:{voteCounter:1}})
+          if (res.mafia.includes(res.teamBlue[choiceMade])){
+            db.collection('Active Games').update({_id:res._id,'participantes.playerID':duid},{$set:{'participantes.$.playerScore':1}})
+            db.collection('Player Stats').findOneAndUpdate({playerID:duid},{$inc:{playerScore:1}},{upsert:true});
+
+          }
+
+
+          newVoteCounter++
+          if (newVoteCounter==(res.teamSize-1)){
+            let trans = await db.collection('Active Games').findOne({code: gameData.code})
+            if (!trans){
+              trans = await db.collection('Old Games').findOne({code: res.code})
+            }
+            let e = new Discord.RichEmbed()
+            .setTitle(`Your ${trans.type} Mafia Game #${trans.code} Is **FINISHED** | Results ->`)
+            .setThumbnail(client.user.avatarURL)
+            .setFooter(`Game over | Use !gameinfo #${trans.code} to check match's statistics`)
+            .setColor('#36393F');
+
+            let rStr='';
+            let bStr='';
+            let mStr='';
+            for(let playerID of trans.teamRed){
+              rStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+            }
+            for(let playerID of trans.teamBlue){
+              bStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+            }
+            for(let mafID of trans.mafia){
+              mStr+=`\n${client.users.get(mafID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == mafID)].playerScore} Points`
+            }
+            if (trans.winner=='Red') {
+              e.addField(`__Red Team__ [Winners]`,`${rStr}`)
+              e.addField(`__Blue Team__`,`${bStr}`,true)
+              e.addField(`__Mafia__`,`${mStr}`,true)
+            }else{
+              e.addField(`__Blue Team__ [Winners]`,`${bStr}`)
+              e.addField(`__Red Team__`,`${rStr}`,true)
+              e.addField(`__Mafia__`,`${mStr}`,true)
+            }
+
+
+            emdMsg.edit(e)
+
+          }else{
+            let numPics = ['https://cdn.discordapp.com/attachments/605555031508385918/605555049363669007/0-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556442866384907/1-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556445055942679/2-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556447862063104/3-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556449958952970/4-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556452052172800/5-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556456288288768/6-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556458490429470/7-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556461266796569/8-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556463292645378/9-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556465322950675/10-Number-PNG.png']
+
+            let e = new Discord.RichEmbed()
+            .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Check your DMs Each member has to vote now!`)
+            .setThumbnail(client.user.avatarURL)
+            .setFooter(`/${res.teamSize-1} have joined the game!`, `${numPics[`${newVoteCounter}`]}`)
+            .setColor('#36393F')
+            emdMsg.edit(e)
+          }
+      })
+    }catch{
+      let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$inc:{voteCounter:1}})
+    }
+
+
+    }
+
+    let mafNum = res.teamBlue.findIndex( p => p.playerID == res.mafia[0])
+    let amt = res.gameVotes.filter( vote => vote.choice == mafNum).length;
+    if ( amt < (res.teamSize/2)){
+      db.collection('Active Games').update({_id:res._id,'participantes.playerID':res.mafia[0]},{$set:{'participantes.$.playerScore':3}})
+      db.collection('Player Stats').findOneAndUpdate({playerID:res.mafia[0]},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:3}},{upsert:true});
+    }
+
+
+
+
+
+
+    }
+
+    // votesReady(gameData,emdMsg,color);
+
+    let trans = await db.collection('Active Games').findOne({code: gameData.code})
+    trans.estado = 'finished'
+    db.collection('Old Games').insertOne(trans)
+    db.collection('Active Games').deleteOne({code: gameData.code})
+
+
 
   }
 
@@ -494,19 +784,18 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
 
 
 
-
 async function votesReady(gameData,embMsg,won){
-    const changeStream = collection.watch();
+    const changeStream = db.collection('Active Games').watch({'estado':'ending'});
     changeStream.on('change', async (next) => {
-      let doc = next.fullDocument;
-      if(doc['estado']=='ending' && doc['_id']==gameData._id){
-      let voteSize = (doc['type']=='League of Legends') ? (doc['teamSize']*2)-2 : next.fullDocument['teamSize']-1
+      let doc = await db.collection('Active Games').findOne({_id:gameData._id});
+      if (!doc) return;
+      if(doc['estado']=='ending'){
+      let voteSize = (doc['type']=='League of Legends') ? (doc['teamSize']*2)-2 : doc['teamSize']-1
           if (voteSize== doc['voteCounter']) {
-
-            if(next.fullDocument['type']=='League of Legends'){
+            if(doc['type']=='League of Legends'){
               for(let maf of doc.mafia){
                 let mafPoints=0;
-                if(doc.teamRed.includes[mafia]){
+                if(doc.teamRed.includes[maf]){
                   if(won=='Red') mafPoints++;
                   if(won=='Blue') mafPoints+=2;
                   let mafNum = doc.teamRed.findIndex( p => p.playerID == maf)
@@ -514,7 +803,7 @@ async function votesReady(gameData,embMsg,won){
                   let toAdd = voteSize - toSub
                   mafPoints+= toAdd
                 }
-                if(doc.teamBlue.includes[mafia]){
+                if(doc.teamBlue.includes[maf]){
                   if(won=='Blue') mafPoints++;
                   if(won=='Red') mafPoints+=2;
                   let mafNum = doc.teamBlue.findIndex( p => p.playerID == maf)
@@ -522,7 +811,7 @@ async function votesReady(gameData,embMsg,won){
                   let toAdd = voteSize - toSub
                   mafPoints+= toAdd
                 }
-                db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':maf},{$set:{'participantes.$.playerScore':mafPoints}})
+                db.collection('Active Games').update({_id:doc._id,'participantes.playerID':maf},{$set:{'participantes.$.playerScore':mafPoints}})
               }
 
               var allRedButMaf = doc.teamRed
@@ -538,16 +827,16 @@ async function votesReady(gameData,embMsg,won){
                   if(won=='Red') redPoints+=2;
                   let playerChoiceIndex = doc.gameVotes.findIndex( p => p.playerID == redPlayer)
                   let playerC = doc.gameVotes[playerChoiceIndex].choice
-                  if (doc.mafia.includes(doc.teamRed[playerC].playerID)) redPoints+=2
-                db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':redPlayer},{$set:{'participantes.$.playerScore':redPoints}})
+                  if (doc.mafia.includes(doc.teamRed[playerC])) redPoints+=2
+                db.collection('Active Games').update({_id:doc._id,'participantes.playerID':redPlayer},{$set:{'participantes.$.playerScore':redPoints}})
               }
               for(let bluePlayer of allBlueButMaf){
                 let bluePoints=0;
                   if(won=='Red') bluePoints+=2;
                   let playerChoiceIndex = doc.gameVotes.findIndex( p => p.playerID == bluePlayer)
                   let playerC = doc.gameVotes[playerChoiceIndex].choice
-                  if (doc.mafia.includes(doc.teamBlue[playerC].playerID)) bluePoints+=2
-                db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':bluePlayer},{$set:{'participantes.$.playerScore':bluePoints}})
+                  if (doc.mafia.includes(doc.teamBlue[playerC])) bluePoints+=2
+                db.collection('Active Games').update({_id:doc._id,'participantes.playerID':bluePlayer},{$set:{'participantes.$.playerScore':bluePoints}})
               }
 
 
@@ -570,9 +859,9 @@ async function votesReady(gameData,embMsg,won){
               if(won=='Red'){
                 for(let redPlayer of allRedButMaf){
                   if(doc.teamRed.includes(onlyMaf)){
-                    db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':redPlayer},{$set:{'participantes.$.playerScore':2}})
+                    db.collection('Active Games').update({_id:doc._id,'participantes.playerID':redPlayer},{$set:{'participantes.$.playerScore':2}})
                   }else{
-                    db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':redPlayer},{$set:{'participantes.$.playerScore':1}})
+                    db.collection('Active Games').update({_id:doc._id,'participantes.playerID':redPlayer},{$set:{'participantes.$.playerScore':1}})
                   }
                 }
               }else{
@@ -584,9 +873,9 @@ async function votesReady(gameData,embMsg,won){
               if(won=='Blue'){
                 for(let bluePlayer of allBlueButMaf){
                   if(doc.teamBlue.includes(onlyMaf)){
-                    db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':bluePlayer},{$set:{'participantes.$.playerScore':2}})
+                    db.collection('Active Games').update({_id:doc._id,'participantes.playerID':bluePlayer},{$set:{'participantes.$.playerScore':2}})
                   }else{
-                    db.collection('Active Games').findOneAndUpdate({_id:doc._id,'participantes.playerID':bluePlayer},{$set:{'participantes.$.playerScore':1}})
+                    db.collection('Active Games').update({_id:doc._id,'participantes.playerID':bluePlayer},{$set:{'participantes.$.playerScore':1}})
                   }
                 }
               }
@@ -603,18 +892,38 @@ async function votesReady(gameData,embMsg,won){
             }
 
             doc.participantes.forEach( p =>{
-              db.collection('Player Stats').findOneAndUpdate({playerID:p.playerID},{$set:{playerScore:p.playerScore}},{upsert:true});
+              db.collection('Player Stats').findOneAndUpdate({playerID:p.playerID},{$set:{playerScore:p.playerScore},$inc:{gamesPlayed:1}},{upsert:true});
             })
+            if(won=='Red'){
+                doc.teamRed.forEach( p =>{
+              db.collection('Player Stats').findOneAndUpdate({playerID:p.playerID},{$inc:{gamesWon:1}},{upsert:true});
+            })
+                doc.mafia.forEach( p =>{
+                  if(doc.teamBlue.includes(p)){
+                    db.collection('Player Stats').findOneAndUpdate({playerID:p.playerID},{$inc:{gamesWon:1}},{upsert:true});
+                  }
+            })
+            }else{
+              doc.teamBlue.forEach( p =>{
+              db.collection('Player Stats').findOneAndUpdate({playerID:p.playerID},{$inc:{gamesWon:1}},{upsert:true});
+            })
+            doc.mafia.forEach( p =>{
+              if(doc.teamRed.includes(p)){
+                db.collection('Player Stats').findOneAndUpdate({playerID:p.playerID},{$inc:{gamesWon:1}},{upsert:true});
+              }
+        })
+            }
+
             let trans = await db.collection('Active Games').findOne({_id:doc._id})
-            trans.winners = won;
+            trans.estado = 'finished'
             db.collection('Old Games').insertOne(trans)
-            db.collection('Active Games').deleteOne(_id:doc._id)
+            db.collection('Active Games').deleteOne({_id:doc._id})
 
 
             let e = new Discord.RichEmbed()
-            .setTitle(`Your ${res.type} Mafia Game #${res.code} Is **FINISHED** | Results ->`)
+            .setTitle(`Your ${trans.type} Mafia Game #${trans.code} Is **FINISHED** | Results ->`)
             .setThumbnail(client.user.avatarURL)
-            .setFooter(`Game over | Use !gameinfo #${res.code} to check match's statistics`)
+            .setFooter(`Game over | Use !gameinfo #${trans.code} to check match's statistics`)
             .setColor('#36393F');
 
             let rStr='';
@@ -627,9 +936,9 @@ async function votesReady(gameData,embMsg,won){
               bStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
             }
             for(let mafID of trans.mafia){
-              mStr+=`\n${client.users.get(mafID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+              mStr+=`\n${client.users.get(mafID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == mafID)].playerScore} Points`
             }
-            if (won=='Red') {
+            if (trans.winner=='Red') {
               e.addField(`__Red Team__ [Winners]`,`${rStr}`)
               e.addField(`__Blue Team__`,`${bStr}`,true)
               e.addField(`__Mafia__`,`${mStr}`,true)
@@ -646,9 +955,9 @@ async function votesReady(gameData,embMsg,won){
             let numPics = ['https://cdn.discordapp.com/attachments/605555031508385918/605555049363669007/0-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556442866384907/1-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556445055942679/2-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556447862063104/3-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556449958952970/4-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556452052172800/5-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556456288288768/6-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556458490429470/7-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556461266796569/8-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556463292645378/9-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556465322950675/10-Number-PNG.png']
 
             let e = new Discord.RichEmbed()
-            .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Check your DMs Each member has to vote now!`)
+            .setTitle(`Your ${doc.type} Mafia Game | #${doc.code} Is **FINISHED**\n\n Check your DMs Each member has to vote now!`)
             .setThumbnail(client.user.avatarURL)
-            .serFooter(`/${voteSize} have joined the game!`, `${numPics[`${next.fullDocument['voteCounter']}`]}`)
+            .setFooter(`/${voteSize} have joined the game!`, `${numPics[`${doc['voteCounter']}`]}`)
             .setColor('#36393F')
             embMsg.edit(e)
           }

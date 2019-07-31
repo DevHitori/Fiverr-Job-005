@@ -4,7 +4,11 @@ date = new Date();
 
 module.exports.run = async (client, message, args, prefix) => {
   // let res = await db.collection('Player Stats').find( { playerScore: { $gt: -1} } ,{$orderby:{'playerScore':1}})
-  let res = await db.collection('Player Stats').find( { playerScore: { $gt: -1} } ,{$orderby:{'playerScore':1}}).map(x => x).toArray();
+  let res = await db.collection('Player Stats').find().map(x => x).toArray();
+
+  res = res.sort(function(a, b){
+   return b.playerScore - a.playerScore;
+ });
 
   if (!res) {
     let e = new Discord.RichEmbed()
@@ -29,12 +33,12 @@ module.exports.run = async (client, message, args, prefix) => {
         i++;
         let z = i-1;
         if (res[z]){
-          let player = json[z];
-          let pname = client.users.get(player.playerID); || 'unknown'
+          let player = res[z];
+          let pname = client.users.get(player.playerID) || 'unknown'
            e.addField(`**${i}.**\t${pname.username} - ${player.playerScore}\n`,'\u200b');
         }
       }
-      e.setFooter(`${i-9} - ${i} of ${res.length} Players`)
+      e.setFooter(`Showing ${i-9} - ${i} of ${res.length} Players`)
     leaderboards[p]=e;
     }
 

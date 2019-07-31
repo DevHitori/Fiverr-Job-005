@@ -14,12 +14,18 @@ module.exports.run = async (client, message, args, prefix) => {
    return;
   }
 
+  let user = client.users.get(message.author.id).username || res.gamesPlayed
+  let played = res.gamesPlayed || 0
+  let created = res.gamesCreated || 0
+  let wonasMaf = res.gamesWonAsMafia || 0
+
+
       let e = new Discord.RichEmbed()
-      .setTitle(`CoachRiver's Mafia Game | ${client.users.get(message.author.id)} Stats`)
+      .setTitle(`CoachRiver's Mafia Game | ${user} Stats`)
       .addField(`Score:`,`${res.playerScore}`)
-      .addField(`Games Played:`,`${res.gamesPlayed}`,true)
-      .addField(`Games Created:`,`${res.gamesCreated}`,true)
-      .addField(`Games Won As Mafia:`,`${res.gamesWonAsMafia}`,true)
+      .addField(`Games Played:`,`${played}`,true)
+      .addField(`Games Created:`,`${created}`,true)
+      .addField(`Games Won As Mafia:`,`${wonasMaf}`,true)
       .setThumbnail(client.user.avatarURL)
       .setColor('#36393F');
       message.channel.send(e)

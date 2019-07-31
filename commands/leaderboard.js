@@ -33,10 +33,17 @@ module.exports.run = async (client, message, args, prefix) => {
     .setThumbnail(client.user.avatarURL)
     .setColor("#36393F");
 
+    let players = res.participantes;
+
+    res = players.sort(function(a, b){
+     return b.playerScore - a.playerScore;
+   });
+
+
     let str='';
-    for (var i = 0; i < res.participantes.length; i++) {
-      let memeber = client.users.get(participantes.playerID) || 'unknown'
-      str+=`\n${memeber} - ${participantes.playerScore}`
+    for (var i = 0; i < players.length; i++) {
+      let memeber = client.users.get(players[i].playerID).username || 'unknown'
+      str+=`\n${memeber} - ${players[i].playerScore}`
     }
 
     e.addField(`Player - Score`,`${str}`);

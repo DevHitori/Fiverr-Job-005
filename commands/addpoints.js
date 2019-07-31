@@ -48,7 +48,11 @@ let res = await db.collection('Player Stats').findOne({playerID: member.user.id}
      .setColor("#36393F");
    message.channel.send(embed);
  }else{
-   let res2 = await db.collection('Player Stats').findOneAndUpdate({playerID: member.user.id},{$inc:{score:points}})
+   let res2 = await db.collection('Player Stats').findOneAndUpdate({playerID: member.user.id},{$inc:{playerScore:points}})
+   var embed = new Discord.RichEmbed()
+    .setTitle(`Points Added`)
+    .setColor("#36393F");
+  message.channel.send(embed);
  }
 
 }
