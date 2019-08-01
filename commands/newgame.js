@@ -159,9 +159,9 @@ module.exports.run = async (client, message, args, prefix, db) => {
   var cancelEnd = false;
 
   let players = [message.author.id]
-
+  let doublecheck = false
   gameLobby.on('end', async coll=>{
-    if (cancelEnd) return;
+    if (cancelEnd || doublecheck ) return;
     if (estado!='generating') {
       globalErr = true;
       let embed5 = new Discord.RichEmbed()
@@ -207,7 +207,9 @@ module.exports.run = async (client, message, args, prefix, db) => {
           gamesWon: 0
         })
       }
-      Nextphase.emit('start',mongoID,emdMsg);
+      console.log('TIMES STARTWED');
+      doublecheck=true;
+      await Nextphase.emit('start',mongoID,emdMsg);
     }
   })
 
@@ -264,12 +266,12 @@ module.exports.run = async (client, message, args, prefix, db) => {
         for(let playerID of players){
           joinedStr += `\n ${client.users.get(playerID).username } joined lobby!`
         }
-        embed6.addField(`__Players Joined:__`,`${joinedStr}`);
+        await embed6.addField(`__Players Joined:__`,`${joinedStr}`);
         emdMsg.edit(embed6)
 
         if(players.length >= teamSize*2){
-          estado = 'generating';
-          gameLobby.emit('end');
+          estado = await 'generating';
+          await gameLobby.stop();
         }
 
       }else{
@@ -286,6 +288,7 @@ module.exports.run = async (client, message, args, prefix, db) => {
 //nextphase
 
 Nextphase.on('start', async (mongoID,embedMsg,database) => {
+  console.log('TIMES RAN');
   await embedMsg.clearReactions();
   let gameData = await db.collection('Active Games').findOne({_id:mongoID});
   if (!gameData) {
@@ -297,8 +300,11 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
   .setThumbnail(client.user.avatarURL)
   .setColor('#36393F');
 
+  console.log('Maf ppl -',gameData.mafia);
   for(let mafia of gameData.mafia){
+    console.log('TIMES RAN1', mafia);
     try{
+      console.log('TIMES RAN2', mafia);
       client.users.get(mafia).send(e1)
     }catch{
       let name = client.users.get(mafia).username || 'unknown'
@@ -419,7 +425,7 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
     .setColor('#36393F')
     emdMsg.edit(fembed3);
 
-    votesReady(gameData,emdMsg,color);
+
 
 
     for(let duid of allRedButMaf){
@@ -445,6 +451,7 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
         choiceMade--;
         let awaited1 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$push: {gameVotes:{$each: [ { playerID: duid, choice: choiceMade }]}}})
         let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$inc:{voteCounter:1}})
+        votesReady(gameData,emdMsg,color);
     })
   }catch{
     let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$inc:{voteCounter:1}})
@@ -474,6 +481,7 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
         choiceMade--;
         let awaited1 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$push: {gameVotes:{$each: [ { playerID: duid, choice: choiceMade }]}}})
         let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$inc:{voteCounter:1}})
+        votesReady(gameData,emdMsg,color);
       })
       }catch{
     let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:gameData._id},{$inc:{voteCounter:1}})
@@ -516,8 +524,8 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
     }
 
     if(color=='Blue' && !res.teamBlue.includes(res.mafia[0])){
-      var allBlueButMaf = res.teamBlue.filter( (m) => m!=res.mafia[0] )
-      for(let blue of allRedButMaf){
+      var allBlueButMaf = res.teamBlue.filter( (m) => m!=res.mafia[0])
+      for(let blue of allBlueButMaf){
         db.collection('Active Games').update({_id:res._id,'participantes.playerID':blue},{$set:{'participantes.$.playerScore':1}})
         db.collection('Player Stats').findOneAndUpdate({playerID:blue},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:1}},{upsert:true});
       }
@@ -541,14 +549,12 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
 
     if(color=='Blue' && res.teamRed.includes(res.mafia[0])){
       let fembed3 = new Discord.RichEmbed()
-      .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Red Team Won - But the mafia was not there 🤔\n\n Time to vote!!\nI'll send instructions to each of you `)
+      .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Blue Team Won - But the mafia was not there 🤔\n\n Time for The Red Team to vote!!\nI'll send instructions to each of you `)
       .setThumbnail(client.user.avatarURL)
       .setColor('#36393F')
       emdMsg.edit(fembed3);
 
       var allRedButMaf = res.teamRed.filter( (m) => m!=res.mafia[0] )
-      console.log('Mafia -',res.mafia[0] );
-      console.log('array  -',allRedButMaf );
 
       for(let duid of allRedButMaf){
       let forRedTeam = new Discord.RichEmbed()
@@ -570,15 +576,17 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
       let playerChoice = msgToPlayer.createReactionCollector(filterChoice,{max:1,time: 30000})
       playerChoice.on('collect', async r=>{
           let choiceMade = (r._emoji.name=='1⃣') ? 1 : (r._emoji.name=='2⃣') ? 2 : (r._emoji.name=='3⃣') ? 3 : (r._emoji.name=='4⃣') ? 4 : (r._emoji.name=='5⃣') ? 5 : (r._emoji.name=='6⃣') ? 6 : (r._emoji.name=='7⃣') ? 7 : (r._emoji.name=='8⃣') ? 8 : (r._emoji.name=='9⃣') ? 9 : (r._emoji.name=='🔟') ? 10 : 11
+          console.log('Choice Made - ', choiceMade);
           choiceMade--;
+          console.log('Looking for  - ', res.teamRed[choiceMade]);
+          console.log('in  - ', res.teamRed);
           let awaited1 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$push: {gameVotes:{$each: [ { playerID: duid, choice: choiceMade }]}}})
           let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$inc:{voteCounter:1}})
 
 
             if (res.mafia.includes(res.teamRed[choiceMade])){
               db.collection('Active Games').update({_id:res._id,'participantes.playerID':duid},{$set:{'participantes.$.playerScore':1}})
-              db.collection('Player Stats').findOneAndUpdate({playerID:duid},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:1}},{upsert:true});
-
+              db.collection('Player Stats').findOneAndUpdate({playerID:duid},{$inc:{gamesPlayed:1,playerScore:1}},{upsert:true});
             }
 
             newVoteCounter++
@@ -597,13 +605,13 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
               let bStr='';
               let mStr='';
               for(let playerID of trans.teamRed){
-                rStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+                rStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.map(p => p.playerID).indexOf(playerID)].playerScore} Points`
               }
               for(let playerID of trans.teamBlue){
-                bStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+                bStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.map(p => p.playerID).indexOf(playerID)].playerScore} Points`
               }
               for(let mafID of trans.mafia){
-                mStr+=`\n${client.users.get(mafID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == mafID)].playerScore} Points`
+                mStr+=`\n${client.users.get(mafID).username} | ${trans.participantes[trans.participantes.map(p => p.playerID).indexOf(mafID)].playerScore} Points`
               }
               if (trans.winner=='Red') {
                 e.addField(`__Red Team__ [Winners]`,`${rStr}`)
@@ -641,8 +649,10 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
 
     }
 
-    let mafNum = res.teamRed.findIndex( p => p.playerID == res.mafia[0])
-    let amt = res.gameVotes.filter( vote => vote.choice == mafNum).length;
+    let mafNum = res.teamRed.indexOf(res.mafia[0])
+    console.log('Maf Num -', mafNum);
+    let amt = res.gameVotes.map(eq=> eq.choice).filter( vote => vote == mafNum).length;
+    console.log('Maf votes -', amt);
     if ( amt < (res.teamSize/2)){
       db.collection('Active Games').update({_id:res._id,'participantes.playerID':res.mafia[0]},{$set:{'participantes.$.playerScore':3}});
       db.collection('Player Stats').findOneAndUpdate({playerID:res.mafia[0]},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:3}},{upsert:true});
@@ -654,14 +664,12 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
 
     if(color=='Red' && res.teamBlue.includes(res.mafia[0])){
       let fembed3 = new Discord.RichEmbed()
-      .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Blue Team Won - But the mafia was not there 🤔\n\n Time to vote!!\nI'll send instructions to each of you`)
+      .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Red Team Won - But the mafia was not there 🤔\n\n Time for The Blue Team to vote!!\nI'll send instructions to each of you`)
       .setThumbnail(client.user.avatarURL)
       .setColor('#36393F')
       emdMsg.edit(fembed3);
 
       var allBlueButMaf = res.teamBlue.filter( (m) => m!=res.mafia[0] )
-      console.log('Mafia -',res.mafia[0] );
-      console.log('array  -',allBlueButMaf );
       for(let duid of allBlueButMaf){
       let forRedTeam = new Discord.RichEmbed()
       .addField(`Time to Vote!`,`Who do you think the mafia on your team was?`)
@@ -682,7 +690,10 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
       let playerChoice = msgToPlayer.createReactionCollector(filterChoice,{max:1,time: 30000})
       playerChoice.on('collect', async r=>{
           let choiceMade = (r._emoji.name=='1⃣') ? 1 : (r._emoji.name=='2⃣') ? 2 : (r._emoji.name=='3⃣') ? 3 : (r._emoji.name=='4⃣') ? 4 : (r._emoji.name=='5⃣') ? 5 : (r._emoji.name=='6⃣') ? 6 : (r._emoji.name=='7⃣') ? 7 : (r._emoji.name=='8⃣') ? 8 : (r._emoji.name=='9⃣') ? 9 : (r._emoji.name=='🔟') ? 10 : 11
+          console.log('Choice Made 2 -',choiceMade);
           choiceMade--;
+          console.log('Lookijng fore 2 -', res.teamBlue[choiceMade]);
+          console.log('Lookijng NAME 2 -', client.users.get(res.teamBlue[choiceMade]).username);
           let awaited1 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$push: {gameVotes:{$each: [ { playerID: duid, choice: choiceMade }]}}})
           let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$inc:{voteCounter:1}})
           if (res.mafia.includes(res.teamBlue[choiceMade])){
@@ -708,13 +719,13 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
             let bStr='';
             let mStr='';
             for(let playerID of trans.teamRed){
-              rStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+              rStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.map(p => p.playerID).indexOf(playerID)].playerScore} Points`
             }
             for(let playerID of trans.teamBlue){
-              bStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+              bStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.map(p => p.playerID).indexOf(playerID)].playerScore} Points`
             }
             for(let mafID of trans.mafia){
-              mStr+=`\n${client.users.get(mafID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == mafID)].playerScore} Points`
+              mStr+=`\n${client.users.get(mafID).username} | ${trans.participantes[trans.participantes.map(p => p.playerID).indexOf(mafID)].playerScore} Points`
             }
             if (trans.winner=='Red') {
               e.addField(`__Red Team__ [Winners]`,`${rStr}`)
@@ -747,8 +758,10 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
 
     }
 
-    let mafNum = res.teamBlue.findIndex( p => p.playerID == res.mafia[0])
-    let amt = res.gameVotes.filter( vote => vote.choice == mafNum).length;
+    let mafNum = res.teamBlue.indexOf(res.mafia[0])
+    console.log('Maf Num2 -', mafNum);
+    let amt = res.gameVotes.map(eq=>eq.choice).filter( vote => vote == mafNum).length;
+    console.log('Maf amt2 -', amt);
     if ( amt < (res.teamSize/2)){
       db.collection('Active Games').update({_id:res._id,'participantes.playerID':res.mafia[0]},{$set:{'participantes.$.playerScore':3}})
       db.collection('Player Stats').findOneAndUpdate({playerID:res.mafia[0]},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:3}},{upsert:true});
@@ -785,34 +798,13 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
 
 
 async function votesReady(gameData,embMsg,won){
-    const changeStream = db.collection('Active Games').watch({'estado':'ending'});
-    changeStream.on('change', async (next) => {
       let doc = await db.collection('Active Games').findOne({_id:gameData._id});
       if (!doc) return;
       if(doc['estado']=='ending'){
       let voteSize = (doc['type']=='League of Legends') ? (doc['teamSize']*2)-2 : doc['teamSize']-1
           if (voteSize== doc['voteCounter']) {
             if(doc['type']=='League of Legends'){
-              for(let maf of doc.mafia){
-                let mafPoints=0;
-                if(doc.teamRed.includes[maf]){
-                  if(won=='Red') mafPoints++;
-                  if(won=='Blue') mafPoints+=2;
-                  let mafNum = doc.teamRed.findIndex( p => p.playerID == maf)
-                  let toSub = doc.gameVotes.filter( vote => vote.choice == mafNum).length;
-                  let toAdd = voteSize - toSub
-                  mafPoints+= toAdd
-                }
-                if(doc.teamBlue.includes[maf]){
-                  if(won=='Blue') mafPoints++;
-                  if(won=='Red') mafPoints+=2;
-                  let mafNum = doc.teamBlue.findIndex( p => p.playerID == maf)
-                  let toSub = doc.gameVotes.filter( vote => vote.choice == mafNum).length;
-                  let toAdd = voteSize - toSub
-                  mafPoints+= toAdd
-                }
-                db.collection('Active Games').update({_id:doc._id,'participantes.playerID':maf},{$set:{'participantes.$.playerScore':mafPoints}})
-              }
+
 
               var allRedButMaf = doc.teamRed
               var allBlueButMaf = doc.teamBlue
@@ -822,18 +814,56 @@ async function votesReady(gameData,embMsg,won){
                 allBlueButMaf = allBlueButMaf.filter( (m) => m!=duid )
               }
 
+
+
+              for(let maf of doc.mafia){
+                let mafPoints=0;
+
+                if(doc.teamRed.includes(maf)){
+                  if(doc.winner=='Red') mafPoints++;
+                  if(doc.winner=='Blue') mafPoints+=2;
+                  let mafNum = doc.teamRed.indexOf(maf)
+
+                  for(let redP of allRedButMaf){
+                    let result = await doc.gameVotes.find(obj => {
+                      return obj.playerID === redP
+                    })
+                    if(result.choice!=mafNum) mafPoints++;
+                  }
+
+                }
+
+                if(doc.teamBlue.includes(maf)){
+                  if(doc.winner=='Blue') mafPoints++;
+                  if(doc.winner=='Red') mafPoints+=2;
+                  let mafNum = doc.teamBlue.indexOf(maf)
+
+                  for(let blueP of allBlueButMaf){
+                    let result = await doc.gameVotes.find(obj => {
+                      return obj.playerID === blueP
+                    })
+                    if(result.choice!=mafNum) mafPoints++;
+                  }
+
+                }
+
+
+                db.collection('Active Games').update({_id:doc._id,'participantes.playerID':maf},{$set:{'participantes.$.playerScore':mafPoints}})
+              }
+
+
               for(let redPlayer of allRedButMaf){
                 let redPoints=0;
                   if(won=='Red') redPoints+=2;
-                  let playerChoiceIndex = doc.gameVotes.findIndex( p => p.playerID == redPlayer)
+                  let playerChoiceIndex = doc.gameVotes.map(p => p.playerID).indexOf(redPlayer)
                   let playerC = doc.gameVotes[playerChoiceIndex].choice
                   if (doc.mafia.includes(doc.teamRed[playerC])) redPoints+=2
                 db.collection('Active Games').update({_id:doc._id,'participantes.playerID':redPlayer},{$set:{'participantes.$.playerScore':redPoints}})
               }
               for(let bluePlayer of allBlueButMaf){
                 let bluePoints=0;
-                  if(won=='Red') bluePoints+=2;
-                  let playerChoiceIndex = doc.gameVotes.findIndex( p => p.playerID == bluePlayer)
+                  if(won=='Blue') bluePoints+=2;
+                  let playerChoiceIndex = doc.gameVotes.map(p => p.playerID).indexOf(bluePlayer)
                   let playerC = doc.gameVotes[playerChoiceIndex].choice
                   if (doc.mafia.includes(doc.teamBlue[playerC])) bluePoints+=2
                 db.collection('Active Games').update({_id:doc._id,'participantes.playerID':bluePlayer},{$set:{'participantes.$.playerScore':bluePoints}})
@@ -900,7 +930,7 @@ async function votesReady(gameData,embMsg,won){
             })
                 doc.mafia.forEach( p =>{
                   if(doc.teamBlue.includes(p)){
-                    db.collection('Player Stats').findOneAndUpdate({playerID:p.playerID},{$inc:{gamesWon:1}},{upsert:true});
+                    db.collection('Player Stats').findOneAndUpdate({playerID:p},{$inc:{gamesWon:1}},{upsert:true});
                   }
             })
             }else{
@@ -909,7 +939,7 @@ async function votesReady(gameData,embMsg,won){
             })
             doc.mafia.forEach( p =>{
               if(doc.teamRed.includes(p)){
-                db.collection('Player Stats').findOneAndUpdate({playerID:p.playerID},{$inc:{gamesWon:1}},{upsert:true});
+                db.collection('Player Stats').findOneAndUpdate({playerID:p},{$inc:{gamesWon:1}},{upsert:true});
               }
         })
             }
@@ -930,13 +960,13 @@ async function votesReady(gameData,embMsg,won){
             let bStr='';
             let mStr='';
             for(let playerID of trans.teamRed){
-              rStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+              rStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.map(p => p.playerID).indexOf(playerID)].playerScore} Points`
             }
             for(let playerID of trans.teamBlue){
-              bStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == playerID)].playerScore} Points`
+              bStr+=`\n${client.users.get(playerID).username} | ${trans.participantes[trans.participantes.map(p => p.playerID).indexOf(playerID)].playerScore} Points`
             }
             for(let mafID of trans.mafia){
-              mStr+=`\n${client.users.get(mafID).username} | ${trans.participantes[trans.participantes.findIndex(p=> p.playerID == mafID)].playerScore} Points`
+              mStr+=`\n${client.users.get(mafID).username} | ${trans.participantes[trans.participantes.map(p => p.playerID).indexOf(mafID)].playerScore} Points`
             }
             if (trans.winner=='Red') {
               e.addField(`__Red Team__ [Winners]`,`${rStr}`)
@@ -974,7 +1004,6 @@ async function votesReady(gameData,embMsg,won){
       //
       // bot.users.get(next.fullDocument.discordID).send(e)
 
-    });
 }
 
 

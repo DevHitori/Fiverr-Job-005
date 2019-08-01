@@ -39,7 +39,7 @@ module.exports.run = async (client, message, args, prefix) => {
       e.addField('Red Team:', res.teamRed.map(d => `\n${client.users.get(d).username}`),true)
       e.addField('Blue Team:', res.teamBlue.map(d => `\n${client.users.get(d).username}`),true)
     }
-    if (res.estado == 'finished'){e.addField(`Mafia:`),res.mafia.map(d => `\n${client.users.get(d)}`)}
+    if (res.estado == 'finished'){e.addField(`Mafia:`,res.mafia.map(d => `\n${client.users.get(d).username}`))}
     message.channel.send(e);
     return;
   }
