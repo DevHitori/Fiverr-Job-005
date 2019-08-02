@@ -109,7 +109,7 @@ module.exports.run = async (client, message, args, prefix, db) => {
   })
   if(globalErr) return;
 
-  let teamSize = (reaction.first()._emoji.name == '5⃣') ? 5 : (reaction.first()._emoji.name == '4⃣') ? 4 : 2
+  let teamSize = (reaction.first()._emoji.name == '5⃣') ? 5 : (reaction.first()._emoji.name == '4⃣') ? 4 : 3
 
   let objArr = [{
     player: message.author.id,
