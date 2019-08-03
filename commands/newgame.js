@@ -76,6 +76,10 @@ module.exports.run = async (client, message, args, prefix, db) => {
     .setColor('#36393F')
     emdMsg.edit(embed2);
   })
+
+  if(globalErr) return;
+
+
   let mongoID = await mongoose.Types.ObjectId()
   let uid = JSON.stringify(mongoID).slice(-7).slice(0, -1)
   let gameType;
@@ -95,7 +99,10 @@ module.exports.run = async (client, message, args, prefix, db) => {
 
   await emdMsg.react('3⃣')
   await emdMsg.react('4⃣')
+
+  if (gameType == 'League of Legends') {
   await emdMsg.react('5⃣')
+  }
 
   let filter2 = (reaction, user) => {
     return ['3⃣', '4⃣','5⃣'].includes(reaction.emoji.name) && user.id === message.author.id; }
@@ -134,7 +141,7 @@ module.exports.run = async (client, message, args, prefix, db) => {
   })
   await emdMsg.clearReactions();
 
-
+  console.log('[+] Inserted Newgame');
 
 
   let numPics = ['https://cdn.discordapp.com/attachments/605555031508385918/605555049363669007/0-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556442866384907/1-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556445055942679/2-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556447862063104/3-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556449958952970/4-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556452052172800/5-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556456288288768/6-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556458490429470/7-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556461266796569/8-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556463292645378/9-Number-PNG.png','https://cdn.discordapp.com/attachments/605555031508385918/605556465322950675/10-Number-PNG.png']
@@ -160,7 +167,7 @@ module.exports.run = async (client, message, args, prefix, db) => {
 
   let players = [message.author.id]
   let doublecheck = false
-  gameLobby.on('end', async coll=>{
+  async function gameLobbyfunc(){
     if (cancelEnd || doublecheck ) return;
     if (estado!='generating') {
       globalErr = true;
@@ -207,11 +214,10 @@ module.exports.run = async (client, message, args, prefix, db) => {
           gamesWon: 0
         })
       }
-      console.log('TIMES STARTWED');
       doublecheck=true;
-      await Nextphase.emit('start',mongoID,emdMsg);
+      await Nextphasefunc(mongoID,emdMsg);
     }
-  })
+  }
 
 
   gameLobby.on('collect', async r =>{
@@ -271,7 +277,7 @@ module.exports.run = async (client, message, args, prefix, db) => {
 
         if(players.length >= teamSize*2){
           estado = await 'generating';
-          await gameLobby.stop();
+          await gameLobbyfunc();
         }
 
       }else{
@@ -287,8 +293,8 @@ module.exports.run = async (client, message, args, prefix, db) => {
 
 //nextphase
 
-Nextphase.on('start', async (mongoID,embedMsg,database) => {
-  console.log('TIMES RAN');
+async function Nextphasefunc(mongoID,embedMsg){
+  console.log('[+] Starting Nextphase');
   await embedMsg.clearReactions();
   let gameData = await db.collection('Active Games').findOne({_id:mongoID});
   if (!gameData) {
@@ -300,11 +306,8 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
   .setThumbnail(client.user.avatarURL)
   .setColor('#36393F');
 
-  console.log('Maf ppl -',gameData.mafia);
   for(let mafia of gameData.mafia){
-    console.log('TIMES RAN1', mafia);
     try{
-      console.log('TIMES RAN2', mafia);
       client.users.get(mafia).send(e1)
     }catch{
       let name = client.users.get(mafia).username || 'unknown'
@@ -576,10 +579,7 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
       let playerChoice = msgToPlayer.createReactionCollector(filterChoice,{max:1,time: 30000})
       playerChoice.on('collect', async r=>{
           let choiceMade = (r._emoji.name=='1⃣') ? 1 : (r._emoji.name=='2⃣') ? 2 : (r._emoji.name=='3⃣') ? 3 : (r._emoji.name=='4⃣') ? 4 : (r._emoji.name=='5⃣') ? 5 : (r._emoji.name=='6⃣') ? 6 : (r._emoji.name=='7⃣') ? 7 : (r._emoji.name=='8⃣') ? 8 : (r._emoji.name=='9⃣') ? 9 : (r._emoji.name=='🔟') ? 10 : 11
-          console.log('Choice Made - ', choiceMade);
           choiceMade--;
-          console.log('Looking for  - ', res.teamRed[choiceMade]);
-          console.log('in  - ', res.teamRed);
           let awaited1 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$push: {gameVotes:{$each: [ { playerID: duid, choice: choiceMade }]}}})
           let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$inc:{voteCounter:1}})
 
@@ -650,9 +650,7 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
     }
 
     let mafNum = res.teamRed.indexOf(res.mafia[0])
-    console.log('Maf Num -', mafNum);
     let amt = res.gameVotes.map(eq=> eq.choice).filter( vote => vote == mafNum).length;
-    console.log('Maf votes -', amt);
     if ( amt < (res.teamSize/2)){
       db.collection('Active Games').update({_id:res._id,'participantes.playerID':res.mafia[0]},{$set:{'participantes.$.playerScore':3}});
       db.collection('Player Stats').findOneAndUpdate({playerID:res.mafia[0]},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:3}},{upsert:true});
@@ -690,10 +688,7 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
       let playerChoice = msgToPlayer.createReactionCollector(filterChoice,{max:1,time: 30000})
       playerChoice.on('collect', async r=>{
           let choiceMade = (r._emoji.name=='1⃣') ? 1 : (r._emoji.name=='2⃣') ? 2 : (r._emoji.name=='3⃣') ? 3 : (r._emoji.name=='4⃣') ? 4 : (r._emoji.name=='5⃣') ? 5 : (r._emoji.name=='6⃣') ? 6 : (r._emoji.name=='7⃣') ? 7 : (r._emoji.name=='8⃣') ? 8 : (r._emoji.name=='9⃣') ? 9 : (r._emoji.name=='🔟') ? 10 : 11
-          console.log('Choice Made 2 -',choiceMade);
           choiceMade--;
-          console.log('Lookijng fore 2 -', res.teamBlue[choiceMade]);
-          console.log('Lookijng NAME 2 -', client.users.get(res.teamBlue[choiceMade]).username);
           let awaited1 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$push: {gameVotes:{$each: [ { playerID: duid, choice: choiceMade }]}}})
           let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$inc:{voteCounter:1}})
           if (res.mafia.includes(res.teamBlue[choiceMade])){
@@ -759,9 +754,7 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
     }
 
     let mafNum = res.teamBlue.indexOf(res.mafia[0])
-    console.log('Maf Num2 -', mafNum);
     let amt = res.gameVotes.map(eq=>eq.choice).filter( vote => vote == mafNum).length;
-    console.log('Maf amt2 -', amt);
     if ( amt < (res.teamSize/2)){
       db.collection('Active Games').update({_id:res._id,'participantes.playerID':res.mafia[0]},{$set:{'participantes.$.playerScore':3}})
       db.collection('Player Stats').findOneAndUpdate({playerID:res.mafia[0]},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:3}},{upsert:true});
@@ -789,7 +782,7 @@ Nextphase.on('start', async (mongoID,embedMsg,database) => {
 
 
 
-});
+}
 
 
 
