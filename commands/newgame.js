@@ -116,7 +116,7 @@ module.exports.run = async (client, message, args, prefix, db) => {
   })
   if(globalErr) return;
 
-  let teamSize = (reaction.first()._emoji.name == '5⃣') ? 5 : (reaction.first()._emoji.name == '4⃣') ? 4 : 3
+  let teamSize = (reaction.first()._emoji.name == '5⃣') ? 5 : (reaction.first()._emoji.name == '4⃣') ? 4 : 2
 
   let objArr = [{
     player: message.author.id,
@@ -612,7 +612,7 @@ async function Nextphasefunc(mongoID,embedMsg){
             }
 
             newVoteCounter++
-            if (newVoteCounter==(res.teamSize-1)){
+            if (newVoteCounter==((res.teamSize*2)-1)){
               let trans = await db.collection('Active Games').findOne({code: res.code})
               if (!trans) {
                 trans = await db.collection('Old Games').findOne({code: res.code})
@@ -654,7 +654,7 @@ async function Nextphasefunc(mongoID,embedMsg){
               let e = new Discord.RichEmbed()
               .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Check your DMs Each member has to vote now!`)
               .setThumbnail(client.user.avatarURL)
-              .setFooter(`/${res.teamSize-1} have joined the game!`, `${numPics[`${newVoteCounter}`]}`)
+              .setFooter(`/${(res.teamSize*2)-1} have voted the game!`, `${numPics[`${newVoteCounter}`]}`)
               .setColor('#36393F')
               emdMsg.edit(e)
             }
@@ -721,7 +721,7 @@ async function Nextphasefunc(mongoID,embedMsg){
 
 
           newVoteCounter++
-          if (newVoteCounter==(res.teamSize-1)){
+          if (newVoteCounter==((res.teamSize*2)-1)){
             let trans = await db.collection('Active Games').findOne({code: gameData.code})
             if (!trans){
               trans = await db.collection('Old Games').findOne({code: res.code})
@@ -763,7 +763,7 @@ async function Nextphasefunc(mongoID,embedMsg){
             let e = new Discord.RichEmbed()
             .setTitle(`Your ${res.type} Mafia Game | #${res.code} Is **FINISHED**\n\n Check your DMs Each member has to vote now!`)
             .setThumbnail(client.user.avatarURL)
-            .setFooter(`/${res.teamSize-1} have joined the game!`, `${numPics[`${newVoteCounter}`]}`)
+            .setFooter(`/${(res.teamSize*2)-1} have voted the game!`, `${numPics[`${newVoteCounter}`]}`)
             .setColor('#36393F')
             emdMsg.edit(e)
           }
