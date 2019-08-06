@@ -202,18 +202,40 @@ module.exports.run = async (client, message, args, prefix, db) => {
 
 
       db.collection('Active Games').findOneAndUpdate({_id:mongoID},{$set: {participantes: partics,teamRed: redTeam, teamBlue: blueTeam, mafia:mafia, estado:'in progress'}});
-      let checkForPlayer = await db.collection('Player Stats').findOne({playerID: message.author.id});
-      if (checkForPlayer){
-        let dbRes2 = await db.collection('Player Stats').findOneAndUpdate({playerID: message.author.id},{$inc:{"gamesCreated":1}})
+
+      if(gameType=='League of Legends'){
+        let checkForPlayer = await db.collection('Player Stats LoL').findOne({playerID: message.author.id});
+
+        if (checkForPlayer){
+          let dbRes2 = await db.collection('Player Stats LoL').findOneAndUpdate({playerID: message.author.id},{$inc:{"gamesCreated":1}})
+        }else{
+          let dbRes2 = await db.collection('Player Stats LoL').insertOne({
+            playerID: message.author.id,
+            playerScore: 0,
+            gamesCreated: 1,
+            gamesPlayed: 0,
+            gamesWon: 0
+          })
+        }
+
       }else{
-        let dbRes2 = await db.collection('Player Stats').insertOne({
-          playerID: message.author.id,
-          playerScore: 0,
-          gamesCreated: 1,
-          gamesPlayed: 0,
-          gamesWon: 0
-        })
+        let checkForPlayer = await db.collection('Player Stats RocketLeague').findOne({playerID: message.author.id});
+
+        if (checkForPlayer){
+          let dbRes2 = await db.collection('Player Stats RocketLeague').findOneAndUpdate({playerID: message.author.id},{$inc:{"gamesCreated":1}})
+        }else{
+          let dbRes2 = await db.collection('Player Stats RocketLeague').insertOne({
+            playerID: message.author.id,
+            playerScore: 0,
+            gamesCreated: 1,
+            gamesPlayed: 0,
+            gamesWon: 0
+          })
+        }
+
+
       }
+
       doublecheck=true;
       await Nextphasefunc(mongoID,emdMsg);
     }
@@ -514,7 +536,7 @@ async function Nextphasefunc(mongoID,embedMsg){
       var allRedButMaf = res.teamRed.filter( (m) => m!=res.mafia[0] )
       for(let red of allRedButMaf){
         db.collection('Active Games').update({_id:res._id,'participantes.playerID':red},{$set:{'participantes.$.playerScore':2}})
-        db.collection('Player Stats').findOneAndUpdate({playerID:red},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:2}},{upsert:true});
+        db.collection('Player Stats RocketLeague').findOneAndUpdate({playerID:red},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:2}},{upsert:true});
       }
     }
 
@@ -522,7 +544,7 @@ async function Nextphasefunc(mongoID,embedMsg){
       var allRedButMaf = res.teamRed.filter( (m) => m!=res.mafia[0] )
       for(let red of allRedButMaf){
         db.collection('Active Games').update({_id:res._id,'participantes.playerID':red},{$set:{'participantes.$.playerScore':1}})
-        db.collection('Player Stats').findOneAndUpdate({playerID:red},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:1}},{upsert:true});
+        db.collection('Player Stats RocketLeague').findOneAndUpdate({playerID:red},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:1}},{upsert:true});
       }
     }
 
@@ -530,7 +552,7 @@ async function Nextphasefunc(mongoID,embedMsg){
       var allBlueButMaf = res.teamBlue.filter( (m) => m!=res.mafia[0])
       for(let blue of allBlueButMaf){
         db.collection('Active Games').update({_id:res._id,'participantes.playerID':blue},{$set:{'participantes.$.playerScore':1}})
-        db.collection('Player Stats').findOneAndUpdate({playerID:blue},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:1}},{upsert:true});
+        db.collection('Player Stats RocketLeague').findOneAndUpdate({playerID:blue},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:1}},{upsert:true});
       }
     }
 
@@ -544,11 +566,12 @@ async function Nextphasefunc(mongoID,embedMsg){
       var allRedButMaf = res.teamBlue.filter( (m) => m!=res.mafia[0] )
       for(let blue of allBlueButMaf){
         db.collection('Active Games').update({_id:res._id,'participantes.playerID':blue},{$set:{'participantes.$.playerScore':2}})
-        db.collection('Player Stats').findOneAndUpdate({playerID:blue},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:2}},{upsert:true});
+        db.collection('Player Stats RocketLeague').findOneAndUpdate({playerID:blue},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:2}},{upsert:true});
       }
     }
 
     var newVoteCounter = 0;
+    var everyButMaf = res.teamRed.concat(res.teamBlue).filter( (m) => m!=res.mafia[0] )
 
     if(color=='Blue' && res.teamRed.includes(res.mafia[0])){
       let fembed3 = new Discord.RichEmbed()
@@ -558,10 +581,9 @@ async function Nextphasefunc(mongoID,embedMsg){
       emdMsg.edit(fembed3);
 
       var allRedButMaf = res.teamRed.filter( (m) => m!=res.mafia[0] )
-
-      for(let duid of allRedButMaf){
+      for(let duid of everyButMaf){
       let forRedTeam = new Discord.RichEmbed()
-      .addField(`Time to Vote!`,`Who do you think the mafia on your team was?`)
+      .addField(`Time to Vote!`,`Who do you think the mafia was?`)
       .addField(`Select an option:`,`${ res.teamRed.map( (id,i) => `\n ${numbers[`${++i}`]} ${ client.users.get(`${id}`).username }`)}` )
       .setFooter(`You have 30 seconds to choose`)
       .setThumbnail(client.user.avatarURL)
@@ -586,7 +608,7 @@ async function Nextphasefunc(mongoID,embedMsg){
 
             if (res.mafia.includes(res.teamRed[choiceMade])){
               db.collection('Active Games').update({_id:res._id,'participantes.playerID':duid},{$set:{'participantes.$.playerScore':1}})
-              db.collection('Player Stats').findOneAndUpdate({playerID:duid},{$inc:{gamesPlayed:1,playerScore:1}},{upsert:true});
+              db.collection('Player Stats RocketLeague').findOneAndUpdate({playerID:duid},{$inc:{gamesPlayed:1,playerScore:1}},{upsert:true});
             }
 
             newVoteCounter++
@@ -653,7 +675,7 @@ async function Nextphasefunc(mongoID,embedMsg){
     let amt = res.gameVotes.map(eq=> eq.choice).filter( vote => vote == mafNum).length;
     if ( amt < (res.teamSize/2)){
       db.collection('Active Games').update({_id:res._id,'participantes.playerID':res.mafia[0]},{$set:{'participantes.$.playerScore':3}});
-      db.collection('Player Stats').findOneAndUpdate({playerID:res.mafia[0]},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:3}},{upsert:true});
+      db.collection('Player Stats RocketLeague').findOneAndUpdate({playerID:res.mafia[0]},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:3}},{upsert:true});
 
   }
 
@@ -668,9 +690,9 @@ async function Nextphasefunc(mongoID,embedMsg){
       emdMsg.edit(fembed3);
 
       var allBlueButMaf = res.teamBlue.filter( (m) => m!=res.mafia[0] )
-      for(let duid of allBlueButMaf){
+      for(let duid of everyButMaf){
       let forRedTeam = new Discord.RichEmbed()
-      .addField(`Time to Vote!`,`Who do you think the mafia on your team was?`)
+      .addField(`Time to Vote!`,`Who do you think the mafia was?`)
       .addField(`Select an option:`,`${ res.teamBlue.map( (id,i) => `\n ${numbers[`${++i}`]} ${ client.users.get(`${id}`).username }`)}` )
       .setFooter(`You have 30 seconds to choose`)
       .setThumbnail(client.user.avatarURL)
@@ -693,7 +715,7 @@ async function Nextphasefunc(mongoID,embedMsg){
           let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$inc:{voteCounter:1}})
           if (res.mafia.includes(res.teamBlue[choiceMade])){
             db.collection('Active Games').update({_id:res._id,'participantes.playerID':duid},{$set:{'participantes.$.playerScore':1}})
-            db.collection('Player Stats').findOneAndUpdate({playerID:duid},{$inc:{playerScore:1}},{upsert:true});
+            db.collection('Player Stats RocketLeague').findOneAndUpdate({playerID:duid},{$inc:{playerScore:1}},{upsert:true});
 
           }
 
@@ -757,7 +779,7 @@ async function Nextphasefunc(mongoID,embedMsg){
     let amt = res.gameVotes.map(eq=>eq.choice).filter( vote => vote == mafNum).length;
     if ( amt < (res.teamSize/2)){
       db.collection('Active Games').update({_id:res._id,'participantes.playerID':res.mafia[0]},{$set:{'participantes.$.playerScore':3}})
-      db.collection('Player Stats').findOneAndUpdate({playerID:res.mafia[0]},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:3}},{upsert:true});
+      db.collection('Player Stats RocketLeague').findOneAndUpdate({playerID:res.mafia[0]},{$inc:{gamesWon:1,gamesPlayed:1,playerScore:3}},{upsert:true});
     }
 
 
@@ -915,24 +937,24 @@ async function votesReady(gameData,embMsg,won){
             }
 
             doc.participantes.forEach( p =>{
-              db.collection('Player Stats').findOneAndUpdate({playerID:p.playerID},{$set:{playerScore:p.playerScore},$inc:{gamesPlayed:1}},{upsert:true});
+              db.collection('Player Stats LoL').findOneAndUpdate({playerID:p.playerID},{$set:{playerScore:p.playerScore},$inc:{gamesPlayed:1}},{upsert:true});
             })
             if(won=='Red'){
                 doc.teamRed.forEach( p =>{
-              db.collection('Player Stats').findOneAndUpdate({playerID:p.playerID},{$inc:{gamesWon:1}},{upsert:true});
+              db.collection('Player Stats LoL').findOneAndUpdate({playerID:p.playerID},{$inc:{gamesWon:1}},{upsert:true});
             })
                 doc.mafia.forEach( p =>{
                   if(doc.teamBlue.includes(p)){
-                    db.collection('Player Stats').findOneAndUpdate({playerID:p},{$inc:{gamesWon:1}},{upsert:true});
+                    db.collection('Player Stats LoL').findOneAndUpdate({playerID:p},{$inc:{gamesWon:1}},{upsert:true});
                   }
             })
             }else{
               doc.teamBlue.forEach( p =>{
-              db.collection('Player Stats').findOneAndUpdate({playerID:p.playerID},{$inc:{gamesWon:1}},{upsert:true});
+              db.collection('Player Stats LoL').findOneAndUpdate({playerID:p.playerID},{$inc:{gamesWon:1}},{upsert:true});
             })
             doc.mafia.forEach( p =>{
               if(doc.teamRed.includes(p)){
-                db.collection('Player Stats').findOneAndUpdate({playerID:p},{$inc:{gamesWon:1}},{upsert:true});
+                db.collection('Player Stats LoL').findOneAndUpdate({playerID:p},{$inc:{gamesWon:1}},{upsert:true});
               }
         })
             }
