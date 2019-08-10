@@ -607,7 +607,7 @@ async function Nextphasefunc(mongoID,embedMsg){
 
 
             if (res.mafia.includes(res.teamRed[choiceMade])){
-              db.collection('Active Games').update({_id:res._id,'participantes.playerID':duid},{$set:{'participantes.$.playerScore':1}})
+              db.collection('Active Games').update({_id:res._id,'participantes.playerID':duid},{$inc:{'participantes.$.playerScore':1}},{upsert:true})
               db.collection('Player Stats RocketLeague').findOneAndUpdate({playerID:duid},{$inc:{gamesPlayed:1,playerScore:1}},{upsert:true});
             }
 
@@ -714,7 +714,7 @@ async function Nextphasefunc(mongoID,embedMsg){
           let awaited1 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$push: {gameVotes:{$each: [ { playerID: duid, choice: choiceMade }]}}})
           let awaited2 = await db.collection('Active Games').findOneAndUpdate({_id:res._id},{$inc:{voteCounter:1}})
           if (res.mafia.includes(res.teamBlue[choiceMade])){
-            db.collection('Active Games').update({_id:res._id,'participantes.playerID':duid},{$set:{'participantes.$.playerScore':1}})
+            db.collection('Active Games').update({_id:res._id,'participantes.playerID':duid},{$inc:{'participantes.$.playerScore':1}},{upsert:true})
             db.collection('Player Stats RocketLeague').findOneAndUpdate({playerID:duid},{$inc:{playerScore:1}},{upsert:true});
 
           }
