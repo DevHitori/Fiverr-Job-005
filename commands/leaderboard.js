@@ -22,6 +22,10 @@ module.exports.run = async (client, message, args, prefix) => {
     active = false
   }
   if (!res) {
+    res = await db.collection('Old Games').findOne({code: args[0]},{$orderby:{'participantes.playerScore':1}})
+    active = false
+  }
+  if (!res) {
     let e = new Discord.RichEmbed()
     .setTitle('A game with that code could not be found.')
     .setColor("#36393F");

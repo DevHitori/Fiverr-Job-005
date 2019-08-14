@@ -3,8 +3,34 @@ const fs = require("fs");
 date = new Date();
 
 module.exports.run = async (client, message, args, prefix) => {
+
+  if(!args[0]){
+    var embed = new Discord.RichEmbed()
+     .setTitle(`Proper usage: !leaderboardalltime [LOL or RL]`)
+     .setColor("#36393F");
+   message.channel.send(embed);
+    return;
+  }
+
+
+
+  let choice = args[0].toLowerCase();
+
+  if(choice != 'lol' && choice != 'rl'){
+    var embed = new Discord.RichEmbed()
+     .setTitle(`Proper usage: !leaderboardalltime [LOL or RL]`)
+     .setColor("#36393F");
+   message.channel.send(embed);
+    return;
+  }
+
+  let res;
   // let res = await db.collection('Player Stats').find( { playerScore: { $gt: -1} } ,{$orderby:{'playerScore':1}})
-  let res = await db.collection('Player Stats').find().map(x => x).toArray();
+  if (args[0].toLowerCase() =='rl') {
+    res = await db.collection('Player Stats RocketLeague').find().map(x => x).toArray();
+  }else{
+    res = await db.collection('Player Stats LoL').find().map(x => x).toArray();
+  }
 
   res = res.sort(function(a, b){
    return b.playerScore - a.playerScore;
@@ -35,7 +61,7 @@ module.exports.run = async (client, message, args, prefix) => {
         if (res[z]){
           let player = res[z];
           let pname = client.users.get(player.playerID) || 'unknown'
-           e.addField(`**${i}.**\t${pname.username} - ${player.playerScore}\n`,'\u200b');
+           e.addField(`**${i}.**\t${(pname.username) ? pname.username: pname } - ${player.playerScore}\n`,'\u200b');
         }
       }
       e.setFooter(`Showing ${i-9} - ${i} of ${res.length} Players`)
